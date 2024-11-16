@@ -28,3 +28,7 @@ Thumbs.db
 
 # for init
 workscripts
+
+# for git
+.github
+backend/.gitattributes

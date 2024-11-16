@@ -1,0 +1,30 @@
+# java
+*.class
+*.jar
+*.war
+*.ear
+
+# gradle
+.gradle/
+build/
+!gradle-wrapper.jar
+
+# spring-boot
+target/
+*.log
+*.bak
+*.swp
+test-output/
+
+# dev
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+*.pid
+*.out
+
+# for init
+workscripts

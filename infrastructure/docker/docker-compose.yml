@@ -18,3 +18,4 @@ volumes:
 
 networks:
   readscape_network:
+    name: readscape_network

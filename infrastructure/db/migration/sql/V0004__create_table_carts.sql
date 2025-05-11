@@ -1,0 +1,7 @@
+
+CREATE TABLE readscape.carts (
+id SERIAL PRIMARY KEY,
+user_id INTEGER NOT NULL REFERENCES readscape.users(id),
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

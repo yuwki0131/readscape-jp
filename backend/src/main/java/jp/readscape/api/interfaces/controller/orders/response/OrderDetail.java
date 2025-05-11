@@ -1,5 +1,6 @@
 package jp.readscape.api.interfaces.controller.orders.response;
 
+import jp.readscape.api.domain.carts.model.CartItem;
 import lombok.Data;
 
 @Data

@@ -10,6 +10,12 @@ $ asdf local gradle 8.11
 
 ```
 
+## db migrate
+
+```
+$ sh infrastructure/db/migrate.sh
+```
+
 ## build & run
 
 ### build

@@ -1,15 +1,15 @@
-package jp.readscape.backend.controller;
+package jp.readscape.api.interfaces.controller.orders;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/sample")
-public class SampleController {
+@RequestMapping("/api/orders")
+public class OrdersController {
 
     @GetMapping
-    public String getSampleMessage() {
-        return "Hello, Readscape!";
+    public String getOrders() {
+        return "Hello, Orders!";
     }
 }

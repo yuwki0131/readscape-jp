@@ -1,4 +1,4 @@
-package jp.readscape.backend.controller.carts;
+package jp.readscape.api.interfaces.controller.carts;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

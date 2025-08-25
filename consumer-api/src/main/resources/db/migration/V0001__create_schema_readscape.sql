@@ -1,0 +1,1 @@
+-- No schema needed for H2 development database

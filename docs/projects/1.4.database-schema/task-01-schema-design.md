@@ -57,6 +57,6 @@ CREATE INDEX idx_users_email ON readscape.users(email);
 - [ ] 外部キー制約が正しく設定されている
 
 ## 関連ファイル
-- `src/main/resources/db/migration/V0001__create_schema_readscape.sql`
-- `src/main/resources/db/migration/V0002__create_table_books.sql`
-- `src/main/resources/db/migration/V0003__create_table_users.sql`
+- `infrastructure/database/migrations/V0001__create_schema_readscape.sql`
+- `infrastructure/database/migrations/V0002__create_table_books.sql`
+- `infrastructure/database/migrations/V0003__create_table_users.sql`

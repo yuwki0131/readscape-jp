@@ -12,7 +12,7 @@ spring:
   flyway:
     enabled: true
     schemas: readscape
-    locations: classpath:db/migration
+    locations: filesystem:../infrastructure/database/migrations
     baseline-on-migrate: true
     validate-on-migrate: true
     clean-disabled: true
@@ -29,7 +29,7 @@ flyway {
     user = 'readscape_user'
     password = 'readscape_pass'
     schemas = ['readscape']
-    locations = ['classpath:db/migration']
+    locations = ['filesystem:../infrastructure/database/migrations']
 }
 ```
 
@@ -49,4 +49,4 @@ flyway {
 ## 関連ファイル
 - `src/main/resources/application.yml`
 - `build.gradle`
-- `src/main/resources/db/migration/`
+- `infrastructure/database/migrations/`

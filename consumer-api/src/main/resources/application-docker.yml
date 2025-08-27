@@ -1,20 +1,19 @@
 spring:
   application:
-    name: readscape-inventory-api
-  
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:dev}
+    name: readscape-consumer-api
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/readscape
-    username: readscape_user
-    password: readscape_pass
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${DB_NAME:readscape}
+    username: ${DB_USER:readscape_user}
+    password: ${DB_PASSWORD:readscape_pass}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 20
+      minimum-idle: 5
       connection-timeout: 30000
       validation-timeout: 5000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   
   jpa:
     hibernate:
@@ -37,14 +36,12 @@ spring:
   
   security:
     jwt:
-      # 本番環境では必ず JWT_SECRET 環境変数を設定してください
-      # 256bit以上のランダムな文字列を使用することを推奨
-      secret: ${JWT_SECRET:CHANGE_THIS_SECRET_IN_PRODUCTION_TO_A_SECURE_RANDOM_256_BIT_STRING}
+      secret: ${JWT_SECRET:docker-development-jwt-secret-key-256-bits-long-for-secure-authentication}
       expiration: 3600000  # 1時間（ミリ秒）
       refresh-expiration: 2592000000  # 30日（ミリ秒）
 
 server:
-  port: ${SERVER_PORT:8081}
+  port: 8080
   servlet:
     context-path: /api
   error:
@@ -63,11 +60,11 @@ management:
 logging:
   level:
     root: INFO
-    jp.readscape.inventory: INFO
+    jp.readscape.consumer: INFO
     org.springframework.security: WARN
+    org.flywaydb: INFO
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
 # OpenAPI Documentation
 springdoc:

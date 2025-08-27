@@ -1,0 +1,102 @@
+
+services:
+  # Consumer API アプリケーション
+  consumer-api:
+    build: 
+      context: ./consumer-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=readscape
+      - DB_USER=readscape_user
+      - DB_PASSWORD=readscape_pass
+      - JWT_SECRET=docker-development-jwt-secret-key-256-bits-long-for-secure-authentication
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./consumer-api/src:/app/src
+      - gradle_cache:/home/gradle/.gradle
+    networks:
+      - readscape_network
+
+  # Inventory Management API アプリケーション
+  inventory-api:
+    build:
+      context: ./inventory-management-api
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=readscape
+      - DB_USER=readscape_user
+      - DB_PASSWORD=readscape_pass
+      - JWT_SECRET=docker-development-jwt-secret-key-256-bits-long-for-secure-authentication
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./inventory-management-api/src:/app/src
+      - gradle_cache_inventory:/home/gradle/.gradle
+    networks:
+      - readscape_network
+
+  # PostgreSQL データベース
+  postgres:
+    image: postgres:15
+    container_name: readscape_postgres
+    environment:
+      POSTGRES_DB: readscape
+      POSTGRES_USER: readscape_user
+      POSTGRES_PASSWORD: readscape_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/config/postgres:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U readscape_user -d readscape"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - readscape_network
+
+  # pgAdmin4 データベース管理ツール
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: readscape_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@readscape.jp
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8082:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - readscape_network
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  gradle_cache:
+    driver: local
+  gradle_cache_inventory:
+    driver: local
+
+networks:
+  readscape_network:
+    driver: bridge

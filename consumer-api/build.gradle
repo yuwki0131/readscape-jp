@@ -78,5 +78,5 @@ flyway {
     user = System.getProperty('flyway.user', 'readscape_user')
     password = System.getProperty('flyway.password', 'readscape_pass')
     schemas = ['readscape']
-    locations = ['classpath:db/migration']
+    locations = ['filesystem:../infrastructure/database/migrations']
 }

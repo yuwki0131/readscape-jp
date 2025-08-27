@@ -10,27 +10,27 @@
 @RestController
 @RequestMapping("/api/users")
 public class UsersController {
-    
+
     @PostMapping("/register")
     public ResponseEntity<ApiResponse> registerUser(
         @Valid @RequestBody RegisterUserRequest request
     ) {
         // ユーザー登録
     }
-    
+
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
         @Valid @RequestBody LoginRequest request
     ) {
         // ログイン
     }
-    
+
     @GetMapping("/profile")
     @PreAuthorize("hasRole('CONSUMER')")
     public ResponseEntity<UserProfile> getProfile(Authentication auth) {
         // プロフィール取得
     }
-    
+
     @PutMapping("/profile")
     @PreAuthorize("hasRole('CONSUMER')")
     public ResponseEntity<ApiResponse> updateProfile(
@@ -39,7 +39,7 @@ public class UsersController {
     ) {
         // プロフィール更新
     }
-    
+
     @GetMapping("/orders")
     @PreAuthorize("hasRole('CONSUMER')")
     public ResponseEntity<List<OrderSummary>> getOrders(Authentication auth) {

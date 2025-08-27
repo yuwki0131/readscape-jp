@@ -4,6 +4,10 @@ import jp.readscape.consumer.domain.users.model.User;
 import jp.readscape.consumer.domain.users.repository.UserRepository;
 import jp.readscape.consumer.domain.orders.repository.OrderRepository;
 import jp.readscape.consumer.dto.users.*;
+import jp.readscape.consumer.services.security.LoginAttemptService;
+import jp.readscape.consumer.services.security.PasswordSecurityService;
+import jp.readscape.consumer.services.security.SecurityAuditService;
+import jp.readscape.consumer.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,6 +29,9 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final OrderRepository orderRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
+    private final PasswordSecurityService passwordSecurityService;
+    private final SecurityAuditService securityAuditService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -32,6 +39,10 @@ public class UserService implements UserDetailsService {
         
         return userRepository.findByUsernameOrEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+    }
+
+    public Optional<User> findByUsername(String username) {
+        return userRepository.findByUsernameOrEmail(username);
     }
 
     /**
@@ -50,8 +61,20 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("メールアドレスが既に使用されています: " + request.getEmail());
         }
 
+        // パスワード強度チェック
+        PasswordSecurityService.PasswordStrengthResult strengthResult = 
+            passwordSecurityService.checkPasswordStrength(request.getPassword());
+        if (!strengthResult.isValid()) {
+            throw new IllegalArgumentException(strengthResult.getMessage());
+        }
+
+        // よくあるパスワードチェック
+        if (passwordSecurityService.isCommonPassword(request.getPassword())) {
+            throw new IllegalArgumentException("よく使用されるパスワードのため使用できません。より安全なパスワードを設定してください。");
+        }
+
         // パスワードの暗号化
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
+        String encodedPassword = passwordSecurityService.encodePassword(request.getPassword());
 
         // ユーザー作成
         User user = User.builder()
@@ -68,6 +91,7 @@ public class UserService implements UserDetailsService {
 
         User savedUser = userRepository.save(user);
         log.info("User registered successfully: {}", savedUser.getUsername());
+        securityAuditService.logUserRegistration(savedUser.getEmail(), "unknown");
 
         return UserProfile.from(savedUser);
     }
@@ -76,20 +100,85 @@ public class UserService implements UserDetailsService {
      * ユーザー認証
      */
     public Optional<User> authenticateUser(String usernameOrEmail, String rawPassword) {
-        log.debug("Authenticating user: {}", usernameOrEmail);
+        return authenticateUser(usernameOrEmail, rawPassword, "unknown");
+    }
+    
+    /**
+     * ユーザー認証（IPアドレス付き）
+     */
+    public Optional<User> authenticateUser(String usernameOrEmail, String rawPassword, String ipAddress) {
+        log.debug("Authenticating user: {}", SecurityUtils.maskUserIdentifier(usernameOrEmail));
 
-        Optional<User> userOpt = userRepository.findByUsernameOrEmail(usernameOrEmail);
+        // ログイン試行制限チェック
+        if (isAccountLocked(usernameOrEmail, ipAddress)) {
+            return Optional.empty();
+        }
+
+        // 実際の認証処理
+        Optional<User> authenticationResult = performAuthentication(usernameOrEmail, rawPassword);
         
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            if (user.isEnabled() && passwordEncoder.matches(rawPassword, user.getPassword())) {
-                log.debug("User authenticated successfully: {}", usernameOrEmail);
+        // 認証結果の処理
+        if (authenticationResult.isPresent()) {
+            handleSuccessfulAuthentication(usernameOrEmail, authenticationResult.get(), ipAddress);
+            return authenticationResult;
+        } else {
+            handleFailedAuthentication(usernameOrEmail, ipAddress);
+            return Optional.empty();
+        }
+    }
+    
+    /**
+     * アカウントロック状態をチェック
+     */
+    private boolean isAccountLocked(String usernameOrEmail, String ipAddress) {
+        if (loginAttemptService.isBlocked(usernameOrEmail)) {
+            long remainingTime = loginAttemptService.getRemainingLockTime(usernameOrEmail);
+            securityAuditService.logFailedLogin(usernameOrEmail, ipAddress, 
+                "Account locked due to too many failed attempts. Remaining time: " + remainingTime + " minutes");
+            log.warn("Account locked for excessive login attempts: {}", SecurityUtils.maskUserIdentifier(usernameOrEmail));
+            return true;
+        }
+        return false;
+    }
+    
+    /**
+     * 実際の認証処理を実行
+     */
+    private Optional<User> performAuthentication(String usernameOrEmail, String rawPassword) {
+        Optional<User> userOptional = userRepository.findByUsernameOrEmail(usernameOrEmail);
+        
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (user.isEnabled() && passwordSecurityService.matches(rawPassword, user.getPassword())) {
                 return Optional.of(user);
             }
         }
         
-        log.debug("Authentication failed for user: {}", usernameOrEmail);
         return Optional.empty();
+    }
+    
+    /**
+     * 認証成功時の処理
+     */
+    private void handleSuccessfulAuthentication(String usernameOrEmail, User user, String ipAddress) {
+        log.debug("User authenticated successfully: {}", SecurityUtils.maskUserIdentifier(usernameOrEmail));
+        loginAttemptService.recordSuccessfulLogin(usernameOrEmail);
+        securityAuditService.logSuccessfulLogin(user.getEmail(), ipAddress);
+    }
+    
+    /**
+     * 認証失敗時の処理
+     */
+    private void handleFailedAuthentication(String usernameOrEmail, String ipAddress) {
+        log.debug("User authentication failed: {}", SecurityUtils.maskUserIdentifier(usernameOrEmail));
+        loginAttemptService.recordFailedLogin(usernameOrEmail);
+        securityAuditService.logFailedLogin(usernameOrEmail, ipAddress, "Invalid credentials");
+        
+        // ログイン試行回数が上限に達した場合のログ
+        if (loginAttemptService.isBlocked(usernameOrEmail)) {
+            int loginAttempts = loginAttemptService.getAttempts(usernameOrEmail);
+            securityAuditService.logAccountLocked(usernameOrEmail, ipAddress, loginAttempts);
+        }
     }
 
     /**

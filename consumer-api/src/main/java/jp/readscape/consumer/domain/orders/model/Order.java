@@ -1,6 +1,7 @@
 package jp.readscape.consumer.domain.orders.model;
 
 import jakarta.persistence.*;
+import jp.readscape.consumer.constants.OrderConstants;
 import jp.readscape.consumer.domain.users.model.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -96,7 +97,7 @@ public class Order {
      * 注文番号を生成
      */
     private String generateOrderNumber() {
-        return "ORD-" + System.currentTimeMillis();
+        return OrderConstants.ORDER_NUMBER_PREFIX + System.currentTimeMillis();
     }
 
     /**
@@ -171,10 +172,10 @@ public class Order {
     }
 
     /**
-     * 配送予定日を取得（注文日から5営業日後と仮定）
+     * 配送予定日を取得（注文日から営業日後と仮定）
      */
     public LocalDateTime getEstimatedDeliveryDate() {
-        return orderDate != null ? orderDate.plusDays(5) : null;
+        return orderDate != null ? orderDate.plusDays(OrderConstants.CANCELLATION_PERIOD_DAYS) : null;
     }
 
     /**

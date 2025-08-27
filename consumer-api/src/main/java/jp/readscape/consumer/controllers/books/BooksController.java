@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jp.readscape.consumer.constants.SortConstants;
 import jp.readscape.consumer.dto.books.BookDetail;
 import jp.readscape.consumer.dto.books.BookSummary;
 import jp.readscape.consumer.dto.books.BooksResponse;
 import jp.readscape.consumer.services.BookService;
+import jp.readscape.consumer.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -58,14 +60,11 @@ public class BooksController {
                 category, keyword, page, size, sortBy);
 
         // パラメータバリデーション
-        if (page < 0) {
-            throw new IllegalArgumentException("ページ番号は0以上である必要があります");
-        }
-        if (size <= 0 || size > 100) {
-            throw new IllegalArgumentException("ページサイズは1以上100以下である必要があります");
-        }
+        ValidationUtils.validatePagingParameters(page, size);
+        String validatedSortBy = SortConstants.validateAndGetSortBy(
+            sortBy, SortConstants.BookSort.VALID_SORT_VALUES, SortConstants.BookSort.DEFAULT);
 
-        BooksResponse response = bookService.findBooks(category, keyword, page, size, sortBy);
+        BooksResponse response = bookService.findBooks(category, keyword, page, size, validatedSortBy);
         return ResponseEntity.ok(response);
     }
 
@@ -85,9 +84,7 @@ public class BooksController {
     ) {
         log.info("GET /books/{} - bookId: {}", id, id);
 
-        if (id <= 0) {
-            throw new IllegalArgumentException("書籍IDは正の整数である必要があります");
-        }
+        ValidationUtils.validatePositiveId(id, "書籍ID");
 
         BookDetail bookDetail = bookService.findBookById(id);
         return ResponseEntity.ok(bookDetail);
@@ -121,11 +118,12 @@ public class BooksController {
         log.info("GET /books/search - query: {}, category: {}, page: {}, size: {}", 
                 q, category, page, size);
 
-        if (q == null || q.trim().isEmpty()) {
-            throw new IllegalArgumentException("検索キーワードは必須です");
-        }
+        ValidationUtils.validateRequiredString(q, "検索キーワード");
+        ValidationUtils.validatePagingParameters(page, size);
+        String validatedSortBy = SortConstants.validateAndGetSortBy(
+            sortBy, SortConstants.BookSort.VALID_SORT_VALUES, SortConstants.BookSort.DEFAULT);
 
-        BooksResponse response = bookService.findBooks(category, q.trim(), page, size, sortBy);
+        BooksResponse response = bookService.findBooks(category, q.trim(), page, size, validatedSortBy);
         return ResponseEntity.ok(response);
     }
 
@@ -158,9 +156,7 @@ public class BooksController {
     ) {
         log.info("GET /books/popular - limit: {}", limit);
 
-        if (limit <= 0 || limit > 50) {
-            throw new IllegalArgumentException("取得件数は1以上50以下である必要があります");
-        }
+        ValidationUtils.validateLimit(limit, 50);
 
         List<BookSummary> popularBooks = bookService.findPopularBooks(limit);
         return ResponseEntity.ok(popularBooks);
@@ -180,9 +176,7 @@ public class BooksController {
     ) {
         log.info("GET /books/top-rated - limit: {}", limit);
 
-        if (limit <= 0 || limit > 50) {
-            throw new IllegalArgumentException("取得件数は1以上50以下である必要があります");
-        }
+        ValidationUtils.validateLimit(limit, 50);
 
         List<BookSummary> topRatedBooks = bookService.findTopRatedBooks(limit);
         return ResponseEntity.ok(topRatedBooks);
@@ -205,12 +199,7 @@ public class BooksController {
     ) {
         log.info("GET /books/in-stock - page: {}, size: {}", page, size);
 
-        if (page < 0) {
-            throw new IllegalArgumentException("ページ番号は0以上である必要があります");
-        }
-        if (size <= 0 || size > 100) {
-            throw new IllegalArgumentException("ページサイズは1以上100以下である必要があります");
-        }
+        ValidationUtils.validatePagingParameters(page, size);
 
         BooksResponse response = bookService.findBooksInStock(page, size);
         return ResponseEntity.ok(response);
@@ -231,9 +220,7 @@ public class BooksController {
     ) {
         log.info("GET /books/isbn/{} - isbn: {}", isbn, isbn);
 
-        if (isbn == null || isbn.trim().isEmpty()) {
-            throw new IllegalArgumentException("ISBNは必須です");
-        }
+        ValidationUtils.validateRequiredString(isbn, "ISBN");
 
         BookDetail bookDetail = bookService.findBookByIsbn(isbn.trim());
         return ResponseEntity.ok(bookDetail);

@@ -6,6 +6,7 @@ import jp.readscape.consumer.domain.reviews.model.Review;
 import jp.readscape.consumer.domain.reviews.repository.ReviewRepository;
 import jp.readscape.consumer.domain.users.model.User;
 import jp.readscape.consumer.dto.reviews.*;
+import jp.readscape.consumer.services.BookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final BookRepository bookRepository;
+    private final BookService bookService;
 
     /**
      * 書籍のレビュー一覧を取得
@@ -117,7 +119,7 @@ public class ReviewService {
         Review savedReview = reviewRepository.save(review);
 
         // 書籍の評価情報を更新
-        updateBookRating(bookId);
+        bookService.updateBookRating(bookId);
 
         log.info("Review posted successfully: {} for book: {} by user: {}", savedReview.getId(), bookId, userId);
         return ReviewResponse.from(savedReview);
@@ -142,7 +144,7 @@ public class ReviewService {
         reviewRepository.delete(review);
 
         // 書籍の評価情報を更新
-        updateBookRating(bookId);
+        bookService.updateBookRating(bookId);
 
         log.info("Review deleted successfully: {} for book: {}", reviewId, bookId);
     }
@@ -170,7 +172,7 @@ public class ReviewService {
         Review updatedReview = reviewRepository.save(review);
 
         // 書籍の評価情報を更新
-        updateBookRating(review.getBook().getId());
+        bookService.updateBookRating(review.getBook().getId());
 
         log.info("Review updated successfully: {} for book: {}", reviewId, review.getBook().getId());
         return ReviewResponse.from(updatedReview);
@@ -263,28 +265,4 @@ public class ReviewService {
         return new PageImpl<>(subList, pageable, reviews.size());
     }
 
-    /**
-     * 書籍の評価情報を更新
-     */
-    private void updateBookRating(Long bookId) {
-        log.debug("Updating book rating for book: {}", bookId);
-
-        Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new IllegalArgumentException("書籍が見つかりません: " + bookId));
-
-        // 平均評価を計算
-        Double avgRating = reviewRepository.calculateAverageRatingByBookId(bookId);
-        if (avgRating != null) {
-            book.setAverageRating(BigDecimal.valueOf(avgRating).setScale(1, RoundingMode.HALF_UP));
-        } else {
-            book.setAverageRating(BigDecimal.ZERO);
-        }
-
-        // レビュー数を更新
-        Long reviewCount = reviewRepository.countByBookId(bookId);
-        book.setReviewCount(reviewCount.intValue());
-
-        bookRepository.save(book);
-        log.debug("Book rating updated: {} (avg: {}, count: {})", bookId, book.getAverageRating(), book.getReviewCount());
-    }
 }

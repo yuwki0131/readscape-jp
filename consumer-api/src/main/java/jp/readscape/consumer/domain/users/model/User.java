@@ -72,7 +72,7 @@ public class User implements UserDetails {
     // UserDetails interface implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return Collections.singletonList(new SimpleGrantedAuthority(role.getAuthority()));
     }
 
     @Override
@@ -122,6 +122,25 @@ public class User implements UserDetails {
     }
 
     public enum UserRole {
-        CONSUMER, ADMIN
+        CONSUMER("ROLE_CONSUMER", "一般消費者"),
+        ADMIN("ROLE_ADMIN", "システム管理者"),
+        MANAGER("ROLE_MANAGER", "在庫管理者"),
+        ANALYST("ROLE_ANALYST", "分析担当者");
+        
+        private final String authority;
+        private final String description;
+        
+        UserRole(String authority, String description) {
+            this.authority = authority;
+            this.description = description;
+        }
+        
+        public String getAuthority() {
+            return authority;
+        }
+        
+        public String getDescription() {
+            return description;
+        }
     }
 }

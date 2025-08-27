@@ -1,8 +1,10 @@
 package jp.readscape.consumer.configurations;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -24,6 +26,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
+    private final Environment environment;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -32,30 +35,63 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http
-                .csrf(csrf -> csrf.disable())
+        HttpSecurity httpSecurity = http
+                .csrf(csrf -> {
+                    // JWTベースAPIのためCSRFは基本的に無効化
+                    // ただし、本番環境では追加のセキュリティレイヤーとしてSameSite cookieを使用
+                    csrf.disable();
+                    // 注意: Cookieベースの認証を使用する場合はCSRFを有効にする必要がある
+                })
                 .sessionManagement(session -> 
                     session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> {
+                    auth
                         // パブリックエンドポイント
                         .requestMatchers("/health", "/actuator/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()  // H2 Console
                         .requestMatchers("/books/**").permitAll()  // 書籍閲覧は認証不要
                         
-                        // ユーザー認証関連エンドポイント
+                        // 認証関連エンドポイント
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/users/register", "/api/users/login").permitAll()
                         .requestMatchers("/api/users/check-username", "/api/users/check-email").permitAll()
                         
-                        // 認証が必要なエンドポイント
-                        .requestMatchers("/api/users/**").authenticated()
-                        .requestMatchers("/cart/**", "/orders/**").authenticated()
+                        // ロールベースアクセス制御
+                        .requestMatchers("/api/cart/**").hasRole("CONSUMER")
+                        .requestMatchers("/api/orders/**").hasRole("CONSUMER")
+                        .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/inventory/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/analytics/**").hasAnyRole("ADMIN", "ANALYST")
                         
-                        .anyRequest().authenticated()
-                )
+                        // 認証が必要なエンドポイント
+                        .requestMatchers("/api/users/**").authenticated();
+                    
+                    // H2 Console - 開発環境でのみ許可
+                    if (isDevEnvironment()) {
+                        auth.requestMatchers("/h2-console/**").permitAll();
+                    }
+                    
+                    auth.anyRequest().authenticated();
+                })
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+        
+        // H2 Console設定 - 開発環境でのみ
+        if (isDevEnvironment()) {
+            httpSecurity.headers(headers -> headers.frameOptions(frameOptions -> frameOptions.disable()));
+        }
+        
+        return httpSecurity.build();
+    }
+    
+    private boolean isDevEnvironment() {
+        String[] activeProfiles = environment.getActiveProfiles();
+        for (String profile : activeProfiles) {
+            if ("dev".equals(profile) || "test".equals(profile)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Bean

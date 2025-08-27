@@ -6,7 +6,7 @@ spring:
     active: dev
   
   datasource:
-    url: jdbc:postgresql://localhost:5432/readscape_consumer
+    url: jdbc:postgresql://localhost:5432/readscape
     username: readscape_user
     password: readscape_pass
     driver-class-name: org.postgresql.Driver
@@ -33,10 +33,13 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
     validate-on-migrate: true
+    clean-disabled: true
   
   security:
     jwt:
-      secret: ${JWT_SECRET:consumer-api-jwt-secret-key-change-in-production}
+      # 本番環境では必ず JWT_SECRET 環境変数を設定してください
+      # 256bit以上のランダムな文字列を使用することを推奨
+      secret: ${JWT_SECRET:CHANGE_THIS_SECRET_IN_PRODUCTION_TO_A_SECURE_RANDOM_256_BIT_STRING}
       expiration: 3600000  # 1時間（ミリ秒）
       refresh-expiration: 2592000000  # 30日（ミリ秒）
 

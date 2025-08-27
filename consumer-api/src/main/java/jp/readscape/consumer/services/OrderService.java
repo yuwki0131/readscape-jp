@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -219,16 +220,25 @@ public class OrderService {
 
     /**
      * 書籍在庫を更新（減算）
+     * パフォーマンス向上のためバッチで処理
      */
     private void updateBookStock(Cart cart) {
+        List<Book> booksToUpdate = new ArrayList<>();
+        
         for (CartItem item : cart.getItems()) {
             Book book = item.getBook();
+            Integer oldStock = book.getStockQuantity();
             Integer newStock = book.getStockQuantity() - item.getQuantity();
             book.setStockQuantity(Math.max(0, newStock));
-            bookRepository.save(book);
+            booksToUpdate.add(book);
             
-            log.debug("Updated stock for book {}: {} -> {}", 
-                book.getId(), book.getStockQuantity() + item.getQuantity(), newStock);
+            log.debug("Prepared stock update for book {}: {} -> {}", 
+                book.getId(), oldStock, newStock);
+        }
+        
+        // バッチで一括保存
+        if (!booksToUpdate.isEmpty()) {
+            bookRepository.saveAll(booksToUpdate);
         }
     }
 

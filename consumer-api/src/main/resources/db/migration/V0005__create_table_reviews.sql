@@ -1,8 +1,8 @@
 -- レビューテーブルの作成
-CREATE TABLE reviews (
-    id SERIAL PRIMARY KEY,
-    book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+CREATE TABLE readscape.reviews (
+    id BIGSERIAL PRIMARY KEY,
+    book_id BIGINT NOT NULL REFERENCES readscape.books(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL REFERENCES readscape.users(id) ON DELETE CASCADE,
     rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
     review_title VARCHAR(100),
     review_comment TEXT,
@@ -14,21 +14,21 @@ CREATE TABLE reviews (
 );
 
 -- インデックス作成
-CREATE INDEX idx_reviews_book_id ON reviews(book_id);
-CREATE INDEX idx_reviews_user_id ON reviews(user_id);
-CREATE INDEX idx_reviews_rating ON reviews(rating);
-CREATE INDEX idx_reviews_created_at ON reviews(created_at);
-CREATE INDEX idx_reviews_helpful_count ON reviews(helpful_count);
-CREATE INDEX idx_reviews_is_verified_purchase ON reviews(is_verified_purchase);
-CREATE INDEX idx_reviews_book_rating ON reviews(book_id, rating);
-CREATE INDEX idx_reviews_book_created ON reviews(book_id, created_at DESC);
+CREATE INDEX idx_reviews_book_id ON readscape.reviews(book_id);
+CREATE INDEX idx_reviews_user_id ON readscape.reviews(user_id);
+CREATE INDEX idx_reviews_rating ON readscape.reviews(rating);
+CREATE INDEX idx_reviews_created_at ON readscape.reviews(created_at);
+CREATE INDEX idx_reviews_helpful_count ON readscape.reviews(helpful_count);
+CREATE INDEX idx_reviews_is_verified_purchase ON readscape.reviews(is_verified_purchase);
+CREATE INDEX idx_reviews_book_rating ON readscape.reviews(book_id, rating);
+CREATE INDEX idx_reviews_book_created ON readscape.reviews(book_id, created_at DESC);
 
 -- 複合インデックス（レビュー取得の最適化）
-CREATE INDEX idx_reviews_book_verified_created ON reviews(book_id, is_verified_purchase, created_at DESC);
-CREATE INDEX idx_reviews_book_helpful_created ON reviews(book_id, helpful_count DESC, created_at DESC);
+CREATE INDEX idx_reviews_book_verified_created ON readscape.reviews(book_id, is_verified_purchase, created_at DESC);
+CREATE INDEX idx_reviews_book_helpful_created ON readscape.reviews(book_id, helpful_count DESC, created_at DESC);
 
 -- サンプルデータの挿入
-INSERT INTO reviews (book_id, user_id, rating, review_title, review_comment, is_verified_purchase, helpful_count) VALUES
+INSERT INTO readscape.reviews (book_id, user_id, rating, review_title, review_comment, is_verified_purchase, helpful_count) VALUES
 -- Spring Boot実践入門のレビュー
 (1, 3, 5, 'とても分かりやすい入門書', 'Spring Bootの基本から応用まで、実践的な内容で非常に理解しやすかったです。コード例も豊富で、実際の開発に活用できます。', true, 3),
 (1, 4, 4, '実践的な内容', 'サンプルコードが豊富で、実際のプロジェクトですぐに使える内容でした。初心者にもおすすめです。', true, 2),

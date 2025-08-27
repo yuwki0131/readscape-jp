@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -239,12 +240,14 @@ public class BookService {
 
     /**
      * 全書籍の評価情報を更新（バッチ処理用）
+     * パフォーマンス向上のためバッチで処理
      */
     @Transactional
     public void updateAllBookRatings() {
-        log.info("Starting update of all book ratings");
+        log.info("Starting batch update of all book ratings");
 
         List<Book> books = bookRepository.findAll();
+        List<Book> updatedBooks = new ArrayList<>();
         
         for (Book book : books) {
             try {
@@ -259,13 +262,18 @@ public class BookService {
                 // レビュー数を更新
                 Long reviewCount = reviewRepository.countByBookId(book.getId());
                 book.setReviewCount(reviewCount.intValue());
-
-                bookRepository.save(book);
+                
+                updatedBooks.add(book);
             } catch (Exception e) {
-                log.error("Failed to update rating for book {}: {}", book.getId(), e.getMessage());
+                log.error("Failed to prepare rating update for book {}: {}", book.getId(), e.getMessage());
             }
         }
 
-        log.info("Completed update of all book ratings for {} books", books.size());
+        // バッチで一括保存
+        if (!updatedBooks.isEmpty()) {
+            bookRepository.saveAll(updatedBooks);
+        }
+
+        log.info("Completed batch update of all book ratings for {} books", updatedBooks.size());
     }
 }

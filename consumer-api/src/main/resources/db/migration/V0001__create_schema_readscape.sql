@@ -1,1 +1,2 @@
--- No schema needed for H2 development database
+-- Create readscape schema
+CREATE SCHEMA IF NOT EXISTS readscape;

@@ -1,0 +1,59 @@
+spring:
+  application:
+    name: inventory-management-api
+  
+  profiles:
+    active: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/readscape
+    username: readscape_user
+    password: readscape_pass
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  flyway:
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    
+server:
+  port: 8081
+
+jwt:
+  secret: inventory-management-secret-key-readscape-2024
+  expiration: 86400000
+
+logging:
+  level:
+    jp.readscape.inventory: DEBUG
+    org.springframework.security: DEBUG
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+  
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/readscape
+    username: readscape_user
+    password: readscape_pass
+    
+  jpa:
+    show-sql: true

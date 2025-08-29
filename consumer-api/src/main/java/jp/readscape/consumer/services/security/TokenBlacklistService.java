@@ -1,44 +1,68 @@
 package jp.readscape.consumer.services.security;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
  * トークンブラックリスト管理サービス
- * 本番環境では Redis または データベースを使用することを推奨
+ * Redis対応（フォールバックあり）
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TokenBlacklistService {
     
-    // TODO: 本番環境では Redis または データベースに置き換える
+    @Autowired(required = false)
+    private final RedisTemplate<String, String> stringRedisTemplate;
+    
+    // Redisが利用できない場合のフォールバック
     private final ConcurrentMap<String, TokenInfo> blacklistedTokens = new ConcurrentHashMap<>();
     
+    private static final String REDIS_KEY_PREFIX = "blacklist:token:";
+    private static final Duration DEFAULT_TTL = Duration.ofHours(24);
+    
     /**
-     * トークンをブラックリストに追加
+     * トークンをブラックリストに追加（Redis対応）
      */
     public void blacklistToken(String token, LocalDateTime expiration) {
         if (token == null || token.isEmpty()) {
             return;
         }
         
-        // トークンのハッシュ値を保存（メモリ効率のため）
+        String maskedToken = token.substring(0, Math.min(10, token.length())) + "...";
+        Duration ttl = expiration != null ? 
+            Duration.between(LocalDateTime.now(), expiration) : DEFAULT_TTL;
+        
+        try {
+            // Redisを試す
+            if (stringRedisTemplate != null && isRedisAvailable()) {
+                String key = REDIS_KEY_PREFIX + Integer.toString(token.hashCode());
+                stringRedisTemplate.opsForValue().set(key, "blacklisted", ttl);
+                log.debug("Token blacklisted in Redis: {} (TTL: {})", maskedToken, ttl);
+                return;
+            }
+        } catch (Exception e) {
+            log.warn("Redis unavailable, using memory storage for token: {}", maskedToken, e);
+        }
+        
+        // フォールバック：メモリベース
         String tokenHash = Integer.toString(token.hashCode());
         blacklistedTokens.put(tokenHash, new TokenInfo(LocalDateTime.now(), expiration));
-        
-        log.debug("Token added to blacklist. Hash: {}, Expires: {}", tokenHash, expiration);
-        
-        // 期限切れトークンのクリーンアップ
+        log.debug("Token added to memory blacklist: {}, Expires: {}", maskedToken, expiration);
         cleanupExpiredTokens();
     }
     
     /**
-     * トークンがブラックリストに登録されているかチェック
+     * トークンがブラックリストに登録されているかチェック（Redis対応）
      */
     public boolean isBlacklisted(String token) {
         if (token == null || token.isEmpty()) {
@@ -46,14 +70,28 @@ public class TokenBlacklistService {
         }
         
         String tokenHash = Integer.toString(token.hashCode());
-        TokenInfo info = blacklistedTokens.get(tokenHash);
         
+        try {
+            // Redisをチェック
+            if (stringRedisTemplate != null && isRedisAvailable()) {
+                String key = REDIS_KEY_PREFIX + tokenHash;
+                Boolean exists = stringRedisTemplate.hasKey(key);
+                if (Boolean.TRUE.equals(exists)) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Redis check failed, checking memory storage: {}", e.getMessage());
+        }
+        
+        // フォールバック：メモリベース
+        TokenInfo info = blacklistedTokens.get(tokenHash);
         if (info == null) {
             return false;
         }
         
         // 期限切れの場合は削除
-        if (info.expiration.isBefore(LocalDateTime.now())) {
+        if (info.expiration != null && info.expiration.isBefore(LocalDateTime.now())) {
             blacklistedTokens.remove(tokenHash);
             return false;
         }
@@ -105,15 +143,40 @@ public class TokenBlacklistService {
         }
     }
     
+    /**
+     * Redisが利用可能かチェック
+     */
+    private boolean isRedisAvailable() {
+        try {
+            if (stringRedisTemplate == null) {
+                return false;
+            }
+            stringRedisTemplate.getConnectionFactory().getConnection().ping();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static class BlacklistStats {
         private final int activeTokens;
+        private final boolean redisAvailable;
         
         public BlacklistStats(int activeTokens) {
+            this(activeTokens, false);
+        }
+        
+        public BlacklistStats(int activeTokens, boolean redisAvailable) {
             this.activeTokens = activeTokens;
+            this.redisAvailable = redisAvailable;
         }
         
         public int getActiveTokens() {
             return activeTokens;
+        }
+        
+        public boolean isRedisAvailable() {
+            return redisAvailable;
         }
     }
 }

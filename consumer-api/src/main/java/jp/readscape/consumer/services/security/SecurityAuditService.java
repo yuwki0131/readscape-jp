@@ -1,5 +1,7 @@
 package jp.readscape.consumer.services.security;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jp.readscape.consumer.utils.SecurityUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +16,28 @@ public class SecurityAuditService {
     private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**
-     * ログイン成功をログに記録します
+     * ログイン成功をログに記録します（HttpServletRequestから自動でIP取得）
+     */
+    public void logSuccessfulLogin(String email, HttpServletRequest request) {
+        String ipAddress = SecurityUtils.getClientIpAddress(request);
+        String userAgent = SecurityUtils.maskUserAgent(request.getHeader("User-Agent"));
+        String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
+        String logMessage = String.format(
+            "%s - SUCCESSFUL_LOGIN: email=%s, ip=%s, user_agent=%s, timestamp=%s",
+            AUDIT_LOG_PREFIX, SecurityUtils.maskUserIdentifier(email), SecurityUtils.maskIpAddress(ipAddress), userAgent, timestamp
+        );
+        
+        log.info(logMessage);
+    }
+
+    /**
+     * ログイン成功をログに記録します（IP指定）
      */
     public void logSuccessfulLogin(String email, String ipAddress) {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
         String logMessage = String.format(
             "%s - SUCCESSFUL_LOGIN: email=%s, ip=%s, timestamp=%s",
-            AUDIT_LOG_PREFIX, email, ipAddress, timestamp
+            AUDIT_LOG_PREFIX, SecurityUtils.maskUserIdentifier(email), SecurityUtils.maskIpAddress(ipAddress), timestamp
         );
         
         log.info(logMessage);

@@ -73,5 +73,23 @@ logging:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
+    display-request-duration: true
+    groups-order: desc
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+  show-actuator: false
+  group-configs:
+    - group: consumer-api
+      display-name: Consumer API - 全API
+    - group: books-api
+      display-name: Books API - 書籍API
+    - group: auth-api
+      display-name: Auth API - 認証・ユーザー管理API
+    - group: shopping-api
+      display-name: Shopping API - ショッピング機能API

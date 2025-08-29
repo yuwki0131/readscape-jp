@@ -1,9 +1,15 @@
 package jp.readscape.consumer.services;
 
 import jp.readscape.consumer.domain.users.model.User;
+import jp.readscape.consumer.domain.users.model.UserRole;
 import jp.readscape.consumer.domain.users.repository.UserRepository;
 import jp.readscape.consumer.domain.orders.repository.OrderRepository;
-import jp.readscape.consumer.dto.users.*;
+import jp.readscape.consumer.dto.users.LoginRequest;
+import jp.readscape.consumer.dto.users.LoginResponse;
+import jp.readscape.consumer.dto.users.OrderSummary;
+import jp.readscape.consumer.dto.users.RegisterUserRequest;
+import jp.readscape.consumer.dto.users.UpdateProfileRequest;
+import jp.readscape.consumer.dto.users.UserProfile;
 import jp.readscape.consumer.services.security.LoginAttemptService;
 import jp.readscape.consumer.services.security.PasswordSecurityService;
 import jp.readscape.consumer.services.security.SecurityAuditService;
@@ -85,7 +91,7 @@ public class UserService implements UserDetailsService {
                 .lastName(request.getLastName())
                 .phone(request.getPhone())
                 .address(request.getAddress())
-                .role(User.UserRole.CONSUMER)
+                .role(UserRole.CONSUMER)
                 .isActive(true)
                 .build();
 

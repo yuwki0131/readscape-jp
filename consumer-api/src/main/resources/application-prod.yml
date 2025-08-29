@@ -35,6 +35,24 @@ spring:
     validate-on-migrate: true
     clean-disabled: true
   
+  # Redis Configuration (本番環境)
+  data:
+    redis:
+      enabled: ${REDIS_ENABLED:true}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: -1ms
+      ssl: ${REDIS_SSL:false}
+  
   security:
     jwt:
       secret: ${JWT_SECRET}

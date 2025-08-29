@@ -1,6 +1,7 @@
 package jp.readscape.consumer.domain.users.repository;
 
 import jp.readscape.consumer.domain.users.model.User;
+import jp.readscape.consumer.domain.users.model.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -46,12 +47,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     /**
      * ロール別ユーザー検索
      */
-    List<User> findByRole(User.UserRole role);
+    List<User> findByRole(UserRole role);
 
     /**
      * アクティブなユーザーをロール別で検索
      */
-    List<User> findByRoleAndIsActiveTrue(User.UserRole role);
+    List<User> findByRoleAndIsActiveTrue(UserRole role);
 
     /**
      * キーワード検索（ユーザー名、姓名、メールアドレス）

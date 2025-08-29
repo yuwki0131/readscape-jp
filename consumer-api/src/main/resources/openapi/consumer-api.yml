@@ -1,0 +1,1134 @@
+openapi: 3.0.3
+info:
+  title: Readscape-JP Consumer API
+  description: 日本語対応書籍販売システムの消費者向けREST API
+  version: 1.0.0
+  contact:
+    name: Readscape-JP API Team
+    email: api@readscape.jp
+    url: https://readscape.jp/api/docs
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: 開発環境
+  - url: https://consumer-api-dev.readscape.jp
+    description: テスト環境
+  - url: https://consumer-api.readscape.jp
+    description: 本番環境
+
+security:
+  - BearerAuth: []
+  - {}
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT トークンによる認証
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 処理成功フラグ
+        message:
+          type: string
+          description: レスポンスメッセージ
+        timestamp:
+          type: string
+          format: date-time
+          description: レスポンス時刻
+      required:
+        - success
+        - timestamp
+
+    ApiErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: エラーコード
+        message:
+          type: string
+          description: エラーメッセージ
+        status:
+          type: integer
+          description: HTTPステータスコード
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          description: リクエストパス
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+      required:
+        - error
+        - message
+        - status
+        - timestamp
+
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: エラーが発生したフィールド名
+        message:
+          type: string
+          description: フィールドエラーメッセージ
+
+    BookSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 書籍ID
+        title:
+          type: string
+          description: 書籍タイトル
+        author:
+          type: string
+          description: 著者名
+        price:
+          type: integer
+          description: 価格（円）
+        category:
+          type: string
+          description: カテゴリー
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+          description: 平均評価
+        reviewCount:
+          type: integer
+          description: レビュー数
+        imageUrl:
+          type: string
+          format: uri
+          description: 書籍画像URL
+        inStock:
+          type: boolean
+          description: 在庫有無
+      required:
+        - id
+        - title
+        - author
+        - price
+        - category
+        - rating
+        - reviewCount
+        - inStock
+
+    BookDetail:
+      allOf:
+        - $ref: '#/components/schemas/BookSummary'
+        - type: object
+          properties:
+            isbn:
+              type: string
+              description: ISBN
+            description:
+              type: string
+              description: 書籍説明
+            publicationDate:
+              type: string
+              format: date
+              description: 出版日
+            publisher:
+              type: string
+              description: 出版社
+            pages:
+              type: integer
+              description: ページ数
+            stockQuantity:
+              type: integer
+              description: 在庫数
+            tags:
+              type: array
+              items:
+                type: string
+              description: タグ一覧
+
+    BooksResponse:
+      type: object
+      properties:
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookSummary'
+          description: 書籍一覧
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+      required:
+        - books
+        - pagination
+
+    PaginationInfo:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          description: 現在のページ番号
+        totalPages:
+          type: integer
+          description: 総ページ数
+        totalElements:
+          type: integer
+          format: int64
+          description: 総要素数
+        size:
+          type: integer
+          description: ページサイズ
+        hasNext:
+          type: boolean
+          description: 次ページの有無
+        hasPrevious:
+          type: boolean
+          description: 前ページの有無
+      required:
+        - currentPage
+        - totalPages
+        - totalElements
+        - size
+        - hasNext
+        - hasPrevious
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ユーザーID
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+        name:
+          type: string
+          description: 氏名
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時
+      required:
+        - id
+        - email
+        - name
+        - createdAt
+        - updatedAt
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+        password:
+          type: string
+          format: password
+          description: パスワード
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWTトークン
+        refreshToken:
+          type: string
+          description: リフレッシュトークン
+        expiresIn:
+          type: integer
+          description: トークン有効期限（秒）
+        user:
+          $ref: '#/components/schemas/User'
+      required:
+        - token
+        - refreshToken
+        - expiresIn
+        - user
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: パスワード（8文字以上）
+        name:
+          type: string
+          minLength: 1
+          description: 氏名
+      required:
+        - email
+        - password
+        - name
+
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: カートアイテムID
+        book:
+          $ref: '#/components/schemas/BookSummary'
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: 数量
+        addedAt:
+          type: string
+          format: date-time
+          description: カート追加日時
+      required:
+        - id
+        - book
+        - quantity
+        - addedAt
+
+    Cart:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+          description: カートアイテム一覧
+        totalItems:
+          type: integer
+          description: 総アイテム数
+        totalPrice:
+          type: integer
+          description: 合計金額（円）
+      required:
+        - items
+        - totalItems
+        - totalPrice
+
+    AddToCartRequest:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: 数量
+      required:
+        - bookId
+        - quantity
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 注文ID
+        orderNumber:
+          type: string
+          description: 注文番号
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED]
+          description: 注文状態
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+          description: 注文アイテム一覧
+        totalPrice:
+          type: integer
+          description: 合計金額（円）
+        shippingAddress:
+          type: string
+          description: 配送先住所
+        paymentMethod:
+          type: string
+          description: 支払い方法
+        orderDate:
+          type: string
+          format: date-time
+          description: 注文日時
+        estimatedDelivery:
+          type: string
+          format: date
+          description: 配送予定日
+      required:
+        - id
+        - orderNumber
+        - status
+        - items
+        - totalPrice
+        - shippingAddress
+        - paymentMethod
+        - orderDate
+
+    OrderItem:
+      type: object
+      properties:
+        book:
+          $ref: '#/components/schemas/BookSummary'
+        quantity:
+          type: integer
+          description: 数量
+        price:
+          type: integer
+          description: 購入時価格（円）
+      required:
+        - book
+        - quantity
+        - price
+
+    CreateOrderRequest:
+      type: object
+      properties:
+        paymentMethod:
+          type: string
+          enum: [credit_card, debit_card, bank_transfer, cash_on_delivery]
+          description: 支払い方法
+        shippingAddress:
+          type: string
+          description: 配送先住所
+      required:
+        - paymentMethod
+        - shippingAddress
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: レビューID
+        book:
+          $ref: '#/components/schemas/BookSummary'
+        user:
+          type: object
+          properties:
+            name:
+              type: string
+              description: レビュアー名
+          required:
+            - name
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: 評価（1-5）
+        comment:
+          type: string
+          description: レビューコメント
+        createdAt:
+          type: string
+          format: date-time
+          description: レビュー投稿日時
+      required:
+        - id
+        - book
+        - user
+        - rating
+        - createdAt
+
+    CreateReviewRequest:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: 評価（1-5）
+        comment:
+          type: string
+          maxLength: 1000
+          description: レビューコメント
+      required:
+        - bookId
+        - rating
+
+paths:
+  /books:
+    get:
+      tags:
+        - Books
+      summary: 書籍一覧取得
+      description: 検索条件に基づいて書籍一覧を取得します
+      security:
+        - {}
+      parameters:
+        - name: category
+          in: query
+          description: カテゴリー名（部分一致）
+          schema:
+            type: string
+          example: 技術書
+        - name: keyword
+          in: query
+          description: 検索キーワード（タイトル・著者名）
+          schema:
+            type: string
+          example: Spring
+        - name: page
+          in: query
+          description: ページ番号（0から開始）
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: sortBy
+          in: query
+          description: ソート条件
+          schema:
+            type: string
+            enum: [title, author, price_asc, price_desc, rating, popularity, newest, oldest]
+            default: newest
+      responses:
+        '200':
+          description: 書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooksResponse'
+        '400':
+          description: パラメータエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /books/{id}:
+    get:
+      tags:
+        - Books
+      summary: 書籍詳細取得
+      description: 指定されたIDの書籍詳細情報を取得します
+      security:
+        - {}
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 書籍詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /books/search:
+    get:
+      tags:
+        - Books
+      summary: 書籍検索
+      description: キーワードでタイトルまたは著者名を検索します
+      security:
+        - {}
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: 検索キーワード
+          schema:
+            type: string
+          example: Java
+        - name: category
+          in: query
+          description: カテゴリー絞り込み
+          schema:
+            type: string
+          example: 技術書
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+        - name: sortBy
+          in: query
+          description: ソート条件
+          schema:
+            type: string
+            enum: [relevance, title, author, price_asc, price_desc, rating, popularity, newest, oldest]
+            default: relevance
+      responses:
+        '200':
+          description: 検索成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooksResponse'
+        '400':
+          description: パラメータエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /books/categories:
+    get:
+      tags:
+        - Books
+      summary: カテゴリー一覧取得
+      description: 利用可能な全カテゴリー一覧を取得します
+      security:
+        - {}
+      responses:
+        '200':
+          description: カテゴリー一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /books/popular:
+    get:
+      tags:
+        - Books
+      summary: 人気書籍一覧取得
+      description: レビュー数の多い人気書籍を取得します
+      security:
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          description: 取得件数
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: 人気書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookSummary'
+
+  /books/top-rated:
+    get:
+      tags:
+        - Books
+      summary: 評価の高い書籍一覧取得
+      description: 平均評価の高い書籍を取得します
+      security:
+        - {}
+      parameters:
+        - name: limit
+          in: query
+          description: 取得件数
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+      responses:
+        '200':
+          description: 高評価書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookSummary'
+
+  /books/in-stock:
+    get:
+      tags:
+        - Books
+      summary: 在庫のある書籍一覧取得
+      description: 在庫のある書籍のみを取得します
+      security:
+        - {}
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: 在庫書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BooksResponse'
+
+  /books/isbn/{isbn}:
+    get:
+      tags:
+        - Books
+      summary: ISBN検索
+      description: ISBNによる書籍検索を行います
+      security:
+        - {}
+      parameters:
+        - name: isbn
+          in: path
+          required: true
+          description: ISBN
+          schema:
+            type: string
+          example: "9784000000001"
+      responses:
+        '200':
+          description: 書籍詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: ログイン
+      description: ユーザー認証を行いJWTトークンを取得します
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: ユーザー登録
+      description: 新規ユーザーを登録します
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: ユーザー登録成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /users/profile:
+    get:
+      tags:
+        - Users
+      summary: プロフィール取得
+      description: 認証済みユーザーのプロフィール情報を取得します
+      responses:
+        '200':
+          description: プロフィール取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: カート内容取得
+      description: 認証済みユーザーのカート内容を取得します
+      responses:
+        '200':
+          description: カート内容取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+    
+    post:
+      tags:
+        - Cart
+      summary: カートに商品追加
+      description: カートに書籍を追加します
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddToCartRequest'
+      responses:
+        '200':
+          description: カート追加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cart'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /orders:
+    get:
+      tags:
+        - Orders
+      summary: 注文履歴取得
+      description: 認証済みユーザーの注文履歴を取得します
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: 注文履歴取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+    post:
+      tags:
+        - Orders
+      summary: 注文作成
+      description: カートの内容から注文を作成します
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: 注文作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /orders/{id}:
+    get:
+      tags:
+        - Orders
+      summary: 注文詳細取得
+      description: 指定されたIDの注文詳細を取得します
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 注文ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 注文詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          description: 注文が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /books/{bookId}/reviews:
+    get:
+      tags:
+        - Reviews
+      summary: 書籍レビュー一覧取得
+      description: 指定された書籍のレビュー一覧を取得します
+      security:
+        - {}
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: レビュー一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+                  pagination:
+                    $ref: '#/components/schemas/PaginationInfo'
+
+    post:
+      tags:
+        - Reviews
+      summary: レビュー投稿
+      description: 書籍にレビューを投稿します
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  description: 評価（1-5）
+                comment:
+                  type: string
+                  maxLength: 1000
+                  description: レビューコメント
+              required:
+                - rating
+      responses:
+        '201':
+          description: レビュー投稿成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /health:
+    get:
+      tags:
+        - System
+      summary: ヘルスチェック
+      description: APIの稼働状態を確認します
+      security:
+        - {}
+      responses:
+        '200':
+          description: API正常稼働
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [UP]
+                  timestamp:
+                    type: string
+                    format: date-time
+
+tags:
+  - name: Books
+    description: 書籍閲覧・検索API
+  - name: Authentication
+    description: 認証API
+  - name: Users
+    description: ユーザー管理API
+  - name: Cart
+    description: ショッピングカートAPI
+  - name: Orders
+    description: 注文管理API
+  - name: Reviews
+    description: レビューAPI
+  - name: System
+    description: システムAPI

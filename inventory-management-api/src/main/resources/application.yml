@@ -73,5 +73,24 @@ logging:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
+    display-request-duration: true
+    groups-order: desc
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+    doc-expansion: none
+  show-actuator: false
+  group-configs:
+    - group: inventory-api
+      display-name: Inventory Management API - 全API
+    - group: admin-books
+      display-name: Admin Books API - 管理者書籍API
+    - group: admin-inventory
+      display-name: Admin Inventory API - 管理者在庫API
+    - group: auth
+      display-name: Auth API - 管理者認証API

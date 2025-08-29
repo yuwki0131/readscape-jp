@@ -27,12 +27,14 @@ public class AdminOrderService {
     private final DtoMappingService dtoMappingService;
 
     /**
-     * 注文一覧取得（管理者向け）
+     * 注文一覧取得（管理者向け）- ソート対応
      */
-    public Page<AdminOrderView> getOrders(String status, int page, int size) {
-        log.debug("Getting admin orders - status: {}, page: {}, size: {}", status, page, size);
+    public Page<AdminOrderView> getOrders(String status, int page, int size, String sortBy, String sortDir) {
+        log.debug("Getting admin orders - status: {}, page: {}, size: {}, sortBy: {}, sortDir: {}", 
+                 status, page, size, sortBy, sortDir);
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by("orderDate").descending());
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
         
         Page<Order> orders;
         if (status != null && !status.isEmpty()) {
@@ -51,9 +53,16 @@ public class AdminOrderService {
     }
 
     /**
+     * 注文一覧取得（後方互換用）
+     */
+    public Page<AdminOrderView> getOrders(String status, int page, int size) {
+        return getOrders(status, page, size, "orderDate", "desc");
+    }
+
+    /**
      * 注文詳細取得
      */
-    public AdminOrderDetail getOrderDetail(Long orderId) {
+    public AdminOrderDetail getOrderById(Long orderId) {
         log.debug("Getting order detail: {}", orderId);
 
         Order order = orderRepository.findById(orderId)
@@ -63,17 +72,24 @@ public class AdminOrderService {
     }
 
     /**
-     * 注文ステータス更新
+     * 注文詳細取得（後方互換用）
+     */
+    public AdminOrderDetail getOrderDetail(Long orderId) {
+        return getOrderById(orderId);
+    }
+
+    /**
+     * 注文ステータス更新（UpdateOrderStatusRequest使用）
      */
     @Transactional
-    public void updateOrderStatus(Long orderId, UpdateOrderStatusRequest request, Long userId) {
-        log.debug("Updating order status: {} -> {}", orderId, request.getStatus());
+    public void updateOrderStatus(Long orderId, UpdateOrderStatusRequest request) {
+        log.debug("Updating order status: {} -> {}", orderId, request.getNewStatus());
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("注文が見つかりません: " + orderId));
 
         Order.OrderStatus oldStatus = order.getStatus();
-        Order.OrderStatus newStatus = request.getStatus();
+        Order.OrderStatus newStatus = Order.OrderStatus.valueOf(request.getNewStatus().toUpperCase());
 
         // ステータス遷移の妥当性をチェック
         validateStatusTransition(oldStatus, newStatus);
@@ -82,26 +98,43 @@ public class AdminOrderService {
         order.updateStatus(newStatus);
         
         // 備考があれば更新
-        if (request.getNotes() != null && !request.getNotes().trim().isEmpty()) {
-            order.setNotes(request.getNotes());
+        if (request.getReason() != null && !request.getReason().trim().isEmpty()) {
+            order.setNotes(request.getReason());
         }
 
         orderRepository.save(order);
         
-        log.info("Order status updated: {} ({} -> {}) by user: {}", 
-                 orderId, oldStatus, newStatus, userId);
+        log.info("Order status updated: {} ({} -> {})", orderId, oldStatus, newStatus);
     }
 
     /**
-     * 処理待ち注文一覧取得
+     * 注文ステータス更新（レガシーメソッド）
      */
-    public List<PendingOrder> getPendingOrders() {
-        log.debug("Getting pending orders");
+    @Transactional
+    public void updateOrderStatus(Long orderId, UpdateOrderStatusRequest request, Long userId) {
+        updateOrderStatus(orderId, request);
+    }
 
-        List<Order> pendingOrders = orderRepository.findPendingOrders();
-        return pendingOrders.stream()
+    /**
+     * 処理待ち注文一覧取得（制限付き）
+     */
+    public List<PendingOrder> getPendingOrders(int limit) {
+        log.debug("Getting pending orders - limit: {}", limit);
+
+        Pageable pageable = PageRequest.of(0, limit, Sort.by("orderDate").ascending());
+        Page<Order> pendingOrders = orderRepository.findByStatusIn(
+            List.of(Order.OrderStatus.PENDING, Order.OrderStatus.CONFIRMED), pageable);
+        
+        return pendingOrders.getContent().stream()
                 .map(dtoMappingService::mapToPendingOrder)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 処理待ち注文一覧取得（制限なし）
+     */
+    public List<PendingOrder> getPendingOrders() {
+        return getPendingOrders(100); // デフォルト100件
     }
 
     /**
@@ -119,13 +152,23 @@ public class AdminOrderService {
     /**
      * 注文検索
      */
-    public Page<AdminOrderView> searchOrders(String keyword, int page, int size) {
-        log.debug("Searching orders with keyword: {}", keyword);
+    public Page<AdminOrderView> searchOrders(String query, int page, int size) {
+        log.debug("Searching orders with query: {}", query);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("orderDate").descending());
-        Page<Order> orders = orderRepository.findByKeyword(keyword, pageable);
+        
+        // 注文番号、顧客名、メールアドレスで検索
+        Page<Order> orders = orderRepository.findByOrderNumberContainingIgnoreCaseOrUser_UsernameContainingIgnoreCaseOrUser_EmailContainingIgnoreCase(
+            query, query, query, pageable);
         
         return orders.map(dtoMappingService::mapToAdminOrderView);
+    }
+
+    /**
+     * レガシー検索メソッド
+     */
+    public Page<AdminOrderView> searchOrders(String keyword, int page, int size) {
+        return searchOrders(keyword, page, size);
     }
 
     /**
@@ -167,29 +210,108 @@ public class AdminOrderService {
     }
 
     /**
-     * 注文統計取得
+     * 注文キャンセル
+     */
+    @Transactional
+    public void cancelOrder(Long orderId, String reason) {
+        log.debug("Cancelling order: {} with reason: {}", orderId, reason);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("注文が見つかりません: " + orderId));
+
+        // キャンセル可能な状態かチェック
+        if (order.getStatus() == Order.OrderStatus.SHIPPED || 
+            order.getStatus() == Order.OrderStatus.DELIVERED ||
+            order.getStatus() == Order.OrderStatus.CANCELLED) {
+            throw new IllegalStateException("この注文はキャンセルできません。現在のステータス: " + order.getStatus());
+        }
+
+        // ステータス更新
+        order.updateStatus(Order.OrderStatus.CANCELLED);
+        
+        // キャンセル理由を記録
+        if (reason != null && !reason.trim().isEmpty()) {
+            String currentNotes = order.getNotes() != null ? order.getNotes() : "";
+            order.setNotes(currentNotes + "\n[キャンセル理由] " + reason);
+        }
+
+        orderRepository.save(order);
+        log.info("Order cancelled: {}", orderId);
+    }
+
+    /**
+     * 注文統計取得（日数指定）
+     */
+    public OrderStatistics getOrderStatistics(int days) {
+        LocalDateTime endDate = LocalDateTime.now();
+        LocalDateTime startDate = endDate.minusDays(days);
+        return getOrderStatistics(startDate, endDate);
+    }
+
+    /**
+     * 注文統計取得（期間指定）
      */
     public OrderStatistics getOrderStatistics(LocalDateTime startDate, LocalDateTime endDate) {
         log.debug("Getting order statistics - start: {}, end: {}", startDate, endDate);
 
-        Object[] stats = orderRepository.getOrderStatistics(startDate, endDate);
-        List<Object[]> statusStats = orderRepository.getOrderCountByStatus();
+        // 簡略化された統計計算（実際のRepositoryメソッドが複雑な場合の代替）
+        Page<Order> ordersInRange = orderRepository.findByOrderDateBetween(
+            startDate, endDate, PageRequest.of(0, Integer.MAX_VALUE));
+        
+        long totalOrders = ordersInRange.getTotalElements();
+        java.math.BigDecimal totalAmount = ordersInRange.getContent().stream()
+                .map(order -> order.getTotalAmount())
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        
+        double averageAmount = totalOrders > 0 ? totalAmount.divide(
+            java.math.BigDecimal.valueOf(totalOrders), 2, java.math.RoundingMode.HALF_UP).doubleValue() : 0.0;
 
-        if (stats == null || stats.length < 3) {
-            return OrderStatistics.empty();
-        }
-
-        Long orderCount = ((Number) stats[0]).longValue();
-        BigDecimal totalAmount = stats[1] != null ? new java.math.BigDecimal(stats[1].toString()) : java.math.BigDecimal.ZERO;
-        Double averageAmount = stats[2] != null ? ((Number) stats[2]).doubleValue() : 0.0;
+        // ステータス別集計
+        java.util.Map<Order.OrderStatus, Long> statusBreakdown = ordersInRange.getContent().stream()
+                .collect(java.util.stream.Collectors.groupingBy(
+                    Order::getStatus, 
+                    java.util.stream.Collectors.counting()));
 
         return OrderStatistics.builder()
                 .startDate(startDate)
                 .endDate(endDate)
-                .totalOrders(orderCount)
+                .totalOrders(totalOrders)
                 .totalAmount(totalAmount)
                 .averageAmount(averageAmount)
-                .statusBreakdown(buildStatusBreakdown(statusStats))
+                .statusBreakdown(statusBreakdown)
+                .build();
+    }
+
+    /**
+     * 配送ラベルデータ取得
+     */
+    public ShippingLabelData getShippingLabelData(Long orderId) {
+        log.debug("Getting shipping label data for order: {}", orderId);
+
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new OrderNotFoundException("注文が見つかりません: " + orderId));
+
+        if (order.getStatus() != Order.OrderStatus.CONFIRMED && 
+            order.getStatus() != Order.OrderStatus.PROCESSING && 
+            order.getStatus() != Order.OrderStatus.SHIPPED) {
+            throw new IllegalStateException("配送ラベルを生成できない注文ステータスです: " + order.getStatus());
+        }
+
+        return ShippingLabelData.builder()
+                .orderId(order.getId())
+                .orderNumber(order.getOrderNumber())
+                .customerName(order.getUser().getUsername())
+                .customerEmail(order.getUser().getEmail())
+                .shippingAddress(order.getShippingAddress())
+                .totalAmount(order.getTotalAmount())
+                .orderDate(order.getOrderDate())
+                .items(order.getOrderItems().stream()
+                        .map(item -> ShippingLabelData.ShippingItem.builder()
+                                .bookTitle(item.getBook().getTitle())
+                                .quantity(item.getQuantity())
+                                .unitPrice(item.getUnitPrice())
+                                .build())
+                        .collect(Collectors.toList()))
                 .build();
     }
 
@@ -288,5 +410,26 @@ public class AdminOrderService {
     public static class TodayOrderStatistics {
         private Long todayOrderCount;
         private java.math.BigDecimal todayTotalAmount;
+    }
+
+    @lombok.Builder
+    @lombok.Data
+    public static class ShippingLabelData {
+        private Long orderId;
+        private String orderNumber;
+        private String customerName;
+        private String customerEmail;
+        private String shippingAddress;
+        private java.math.BigDecimal totalAmount;
+        private LocalDateTime orderDate;
+        private List<ShippingItem> items;
+
+        @lombok.Builder
+        @lombok.Data
+        public static class ShippingItem {
+            private String bookTitle;
+            private Integer quantity;
+            private java.math.BigDecimal unitPrice;
+        }
     }
 }

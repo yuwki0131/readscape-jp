@@ -1,0 +1,1250 @@
+openapi: 3.0.3
+info:
+  title: Readscape-JP Inventory Management API
+  description: 日本語対応書籍販売システムの在庫管理API（管理者・マネージャー向け）
+  version: 1.0.0
+  contact:
+    name: Readscape-JP API Team
+    email: api@readscape.jp
+    url: https://readscape.jp/api/docs
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8081/api
+    description: 開発環境
+  - url: https://inventory-api-dev.readscape.jp/api
+    description: テスト環境
+  - url: https://inventory-api.readscape.jp/api
+    description: 本番環境
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 管理者用JWT トークンによる認証
+
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: 処理成功フラグ
+        message:
+          type: string
+          description: レスポンスメッセージ
+        timestamp:
+          type: string
+          format: date-time
+          description: レスポンス時刻
+      required:
+        - success
+        - timestamp
+
+    ApiErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: エラーコード
+        message:
+          type: string
+          description: エラーメッセージ
+        status:
+          type: integer
+          description: HTTPステータスコード
+        timestamp:
+          type: string
+          format: date-time
+        path:
+          type: string
+          description: リクエストパス
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+      required:
+        - error
+        - message
+        - status
+        - timestamp
+
+    FieldError:
+      type: object
+      properties:
+        field:
+          type: string
+          description: エラーが発生したフィールド名
+        message:
+          type: string
+          description: フィールドエラーメッセージ
+
+    AdminBookView:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 書籍ID
+        title:
+          type: string
+          description: 書籍タイトル
+        author:
+          type: string
+          description: 著者名
+        isbn:
+          type: string
+          description: ISBN
+        category:
+          type: string
+          description: カテゴリー
+        price:
+          type: integer
+          description: 価格（円）
+        description:
+          type: string
+          description: 書籍説明
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日
+        publisher:
+          type: string
+          description: 出版社
+        pages:
+          type: integer
+          description: ページ数
+        stockQuantity:
+          type: integer
+          description: 在庫数
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, DISCONTINUED]
+          description: 書籍ステータス
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時
+        updatedAt:
+          type: string
+          format: date-time
+          description: 更新日時
+        createdBy:
+          type: string
+          description: 登録者
+        updatedBy:
+          type: string
+          description: 更新者
+      required:
+        - id
+        - title
+        - author
+        - isbn
+        - category
+        - price
+        - stockQuantity
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateBookRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 書籍タイトル
+        author:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 著者名
+        isbn:
+          type: string
+          pattern: '^97[8-9][0-9]{10}$'
+          description: ISBN（13桁）
+        category:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: カテゴリー
+        price:
+          type: integer
+          minimum: 1
+          maximum: 999999
+          description: 価格（円）
+        description:
+          type: string
+          maxLength: 2000
+          description: 書籍説明
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日
+        publisher:
+          type: string
+          maxLength: 100
+          description: 出版社
+        pages:
+          type: integer
+          minimum: 1
+          maximum: 99999
+          description: ページ数
+        initialStock:
+          type: integer
+          minimum: 0
+          default: 0
+          description: 初期在庫数
+      required:
+        - title
+        - author
+        - isbn
+        - category
+        - price
+        - publicationDate
+        - publisher
+        - pages
+
+    CreateBookResponse:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 作成された書籍ID
+        title:
+          type: string
+          description: 書籍タイトル
+        isbn:
+          type: string
+          description: ISBN
+        message:
+          type: string
+          description: 成功メッセージ
+      required:
+        - bookId
+        - title
+        - isbn
+        - message
+
+    UpdateBookRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: 書籍タイトル
+        author:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: 著者名
+        isbn:
+          type: string
+          pattern: '^97[8-9][0-9]{10}$'
+          description: ISBN（13桁）
+        category:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: カテゴリー
+        price:
+          type: integer
+          minimum: 1
+          maximum: 999999
+          description: 価格（円）
+        description:
+          type: string
+          maxLength: 2000
+          description: 書籍説明
+        publicationDate:
+          type: string
+          format: date
+          description: 出版日
+        publisher:
+          type: string
+          maxLength: 100
+          description: 出版社
+        pages:
+          type: integer
+          minimum: 1
+          maximum: 99999
+          description: ページ数
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, DISCONTINUED]
+          description: 書籍ステータス
+
+    InventoryItem:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        title:
+          type: string
+          description: 書籍タイトル
+        author:
+          type: string
+          description: 著者名
+        isbn:
+          type: string
+          description: ISBN
+        currentStock:
+          type: integer
+          description: 現在在庫数
+        reservedStock:
+          type: integer
+          description: 予約済み在庫数
+        availableStock:
+          type: integer
+          description: 利用可能在庫数
+        lowStockThreshold:
+          type: integer
+          description: 低在庫閾値
+        lastRestockDate:
+          type: string
+          format: date-time
+          description: 最終入荷日
+        lastSaleDate:
+          type: string
+          format: date-time
+          description: 最終販売日
+      required:
+        - bookId
+        - title
+        - author
+        - isbn
+        - currentStock
+        - reservedStock
+        - availableStock
+        - lowStockThreshold
+
+    StockUpdateRequest:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [INBOUND, OUTBOUND, ADJUSTMENT]
+          description: 在庫更新タイプ
+        quantity:
+          type: integer
+          minimum: 1
+          description: 数量
+        reason:
+          type: string
+          maxLength: 200
+          description: 理由・備考
+      required:
+        - type
+        - quantity
+
+    LowStockItem:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        title:
+          type: string
+          description: 書籍タイトル
+        currentStock:
+          type: integer
+          description: 現在在庫数
+        lowStockThreshold:
+          type: integer
+          description: 低在庫閾値
+        urgencyLevel:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+          description: 緊急度
+        daysUntilOutOfStock:
+          type: integer
+          description: 在庫切れまでの予測日数
+        averageDailySales:
+          type: number
+          format: float
+          description: 平均日次売上数
+      required:
+        - bookId
+        - title
+        - currentStock
+        - lowStockThreshold
+        - urgencyLevel
+
+    StockHistoryResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: 履歴ID
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        bookTitle:
+          type: string
+          description: 書籍タイトル
+        type:
+          type: string
+          enum: [INBOUND, OUTBOUND, ADJUSTMENT, SALE, RETURN]
+          description: 変動タイプ
+        quantity:
+          type: integer
+          description: 変動数量
+        previousStock:
+          type: integer
+          description: 変動前在庫数
+        newStock:
+          type: integer
+          description: 変動後在庫数
+        reason:
+          type: string
+          description: 理由・備考
+        createdAt:
+          type: string
+          format: date-time
+          description: 変動日時
+        createdBy:
+          type: string
+          description: 操作者
+      required:
+        - id
+        - bookId
+        - bookTitle
+        - type
+        - quantity
+        - previousStock
+        - newStock
+        - createdAt
+        - createdBy
+
+    InventoryStatistics:
+      type: object
+      properties:
+        totalBooks:
+          type: integer
+          description: 総書籍数
+        totalStock:
+          type: integer
+          description: 総在庫数
+        lowStockItems:
+          type: integer
+          description: 低在庫商品数
+        outOfStockItems:
+          type: integer
+          description: 在庫切れ商品数
+        totalValue:
+          type: integer
+          description: 在庫総額（円）
+        categoryBreakdown:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              itemCount:
+                type: integer
+                description: アイテム数
+              totalStock:
+                type: integer
+                description: 在庫数
+              totalValue:
+                type: integer
+                description: 在庫額
+          description: カテゴリー別内訳
+      required:
+        - totalBooks
+        - totalStock
+        - lowStockItems
+        - outOfStockItems
+        - totalValue
+        - categoryBreakdown
+
+    StockMovementStatistics:
+      type: object
+      properties:
+        period:
+          type: object
+          properties:
+            startDate:
+              type: string
+              format: date
+            endDate:
+              type: string
+              format: date
+        totalInbound:
+          type: integer
+          description: 総入荷数
+        totalOutbound:
+          type: integer
+          description: 総出荷数
+        totalSales:
+          type: integer
+          description: 総販売数
+        totalAdjustments:
+          type: integer
+          description: 総調整数
+        netMovement:
+          type: integer
+          description: 正味変動数
+        dailyAverages:
+          type: object
+          properties:
+            inbound:
+              type: number
+              format: float
+            outbound:
+              type: number
+              format: float
+            sales:
+              type: number
+              format: float
+        topMovingBooks:
+          type: array
+          items:
+            type: object
+            properties:
+              bookId:
+                type: integer
+                format: int64
+              title:
+                type: string
+              totalMovement:
+                type: integer
+              salesCount:
+                type: integer
+      required:
+        - period
+        - totalInbound
+        - totalOutbound
+        - totalSales
+        - totalAdjustments
+        - netMovement
+        - dailyAverages
+        - topMovingBooks
+
+    BulkStockUpdateRequest:
+      type: object
+      properties:
+        bookId:
+          type: integer
+          format: int64
+          description: 書籍ID
+        newStock:
+          type: integer
+          minimum: 0
+          description: 新在庫数
+        reason:
+          type: string
+          maxLength: 200
+          description: 調整理由
+      required:
+        - bookId
+        - newStock
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          description: ユーザー名
+        password:
+          type: string
+          format: password
+          description: パスワード
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWTトークン
+        refreshToken:
+          type: string
+          description: リフレッシュトークン
+        expiresIn:
+          type: integer
+          description: トークン有効期限（秒）
+        user:
+          $ref: '#/components/schemas/AdminUser'
+      required:
+        - token
+        - refreshToken
+        - expiresIn
+        - user
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ユーザーID
+        username:
+          type: string
+          description: ユーザー名
+        email:
+          type: string
+          format: email
+          description: メールアドレス
+        role:
+          type: string
+          enum: [ADMIN, MANAGER]
+          description: 権限ロール
+        createdAt:
+          type: string
+          format: date-time
+          description: 登録日時
+        lastLoginAt:
+          type: string
+          format: date-time
+          description: 最終ログイン日時
+      required:
+        - id
+        - username
+        - email
+        - role
+        - createdAt
+
+paths:
+  /admin/books:
+    get:
+      tags:
+        - Admin Books
+      summary: 書籍一覧取得
+      description: 管理者向け書籍一覧を取得します
+      parameters:
+        - name: page
+          in: query
+          description: ページ番号（0から開始）
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          description: 書籍ステータス
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, DISCONTINUED]
+      responses:
+        '200':
+          description: 書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminBookView'
+                  pageable:
+                    type: object
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  size:
+                    type: integer
+                  number:
+                    type: integer
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: 管理者権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+    post:
+      tags:
+        - Admin Books
+      summary: 書籍作成
+      description: 新規書籍を登録します
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookRequest'
+      responses:
+        '201':
+          description: 書籍作成成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBookResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: 管理者権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: ISBN重複エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /admin/books/{id}:
+    get:
+      tags:
+        - Admin Books
+      summary: 書籍詳細取得
+      description: 指定された書籍IDの詳細情報を取得します
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 書籍詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminBookView'
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: 管理者権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+    put:
+      tags:
+        - Admin Books
+      summary: 書籍更新
+      description: 指定された書籍の情報を更新します
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookRequest'
+      responses:
+        '200':
+          description: 書籍更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: 管理者権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: ISBN重複エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+    delete:
+      tags:
+        - Admin Books
+      summary: 書籍削除
+      description: 指定された書籍を削除します（ADMIN権限必要）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 書籍削除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: ADMIN権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /admin/books/search:
+    get:
+      tags:
+        - Admin Books
+      summary: 書籍検索
+      description: キーワードで書籍を検索します
+      parameters:
+        - name: keyword
+          in: query
+          required: true
+          description: 検索キーワード
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: 書籍検索成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminBookView'
+                  pageable:
+                    type: object
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+
+  /admin/books/low-stock:
+    get:
+      tags:
+        - Admin Books
+      summary: 低在庫書籍一覧取得
+      description: 在庫が閾値以下の書籍一覧を取得します
+      responses:
+        '200':
+          description: 低在庫書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminBookView'
+
+  /admin/books/out-of-stock:
+    get:
+      tags:
+        - Admin Books
+      summary: 在庫切れ書籍一覧取得
+      description: 在庫が0の書籍一覧を取得します
+      responses:
+        '200':
+          description: 在庫切れ書籍一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminBookView'
+
+  /admin/books/categories:
+    get:
+      tags:
+        - Admin Books
+      summary: カテゴリ一覧取得
+      description: 書籍に設定されているカテゴリの一覧を取得します
+      responses:
+        '200':
+          description: カテゴリ一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /admin/inventory:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 在庫一覧取得
+      description: 全書籍の在庫情報を取得します
+      responses:
+        '200':
+          description: 在庫一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InventoryItem'
+        '401':
+          description: 認証が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: 管理者権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /admin/inventory/{bookId}:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 書籍別在庫詳細取得
+      description: 指定された書籍の詳細な在庫情報を取得します
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: 在庫詳細取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /admin/inventory/{bookId}/stock:
+    post:
+      tags:
+        - Admin Inventory
+      summary: 在庫更新
+      description: 指定された書籍の在庫を更新します
+      parameters:
+        - name: bookId
+          in: path
+          required: true
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockUpdateRequest'
+      responses:
+        '200':
+          description: 在庫更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '404':
+          description: 書籍が見つかりません
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '409':
+          description: 在庫不足エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /admin/inventory/low-stock:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 低在庫商品一覧取得
+      description: 在庫が閾値以下の商品一覧を取得します
+      responses:
+        '200':
+          description: 低在庫商品一覧取得成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LowStockItem'
+
+  /admin/inventory/history:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 在庫変動履歴取得
+      description: 在庫変動の履歴を取得します
+      parameters:
+        - name: bookId
+          in: query
+          description: 書籍ID
+          schema:
+            type: integer
+            format: int64
+        - name: startDate
+          in: query
+          description: 開始日
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          description: 終了日
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: ページ番号
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          description: ページサイズ
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: 在庫履歴取得成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StockHistoryResponse'
+                  pageable:
+                    type: object
+                  totalElements:
+                    type: integer
+                  totalPages:
+                    type: integer
+
+  /admin/inventory/statistics:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 在庫統計取得
+      description: 在庫の全体統計情報を取得します
+      responses:
+        '200':
+          description: 在庫統計取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryStatistics'
+
+  /admin/inventory/movement-statistics:
+    get:
+      tags:
+        - Admin Inventory
+      summary: 期間内在庫変動統計取得
+      description: 指定期間内の在庫変動統計を取得します
+      parameters:
+        - name: startDate
+          in: query
+          required: true
+          description: 開始日
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: true
+          description: 終了日
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: 在庫変動統計取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StockMovementStatistics'
+
+  /admin/inventory/bulk-update:
+    post:
+      tags:
+        - Admin Inventory
+      summary: 一括在庫調整
+      description: 複数の書籍の在庫を一括で調整します（ADMIN権限必要）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BulkStockUpdateRequest'
+      responses:
+        '200':
+          description: 一括在庫調整成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+        '400':
+          description: バリデーションエラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+        '403':
+          description: ADMIN権限が必要です
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: 管理者ログイン
+      description: 管理者認証を行いJWTトークンを取得します
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: ログイン成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 認証エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiErrorResponse'
+
+tags:
+  - name: Admin Books
+    description: 管理者向け書籍管理API
+  - name: Admin Inventory
+    description: 管理者向け在庫管理API
+  - name: Authentication
+    description: 管理者認証API

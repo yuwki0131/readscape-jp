@@ -23,11 +23,13 @@ spring:
   
   security:
     jwt:
-      secret: dev-jwt-secret-key-for-development-only
+      secret: dev-jwt-secret-key-for-development-only-256-bits-long
+      expiration: 3600000
+      refresh-expiration: 2592000000
 
 logging:
   level:
-    jp.readscape.inventory: DEBUG
+    jp.readscape: DEBUG
     org.springframework.web: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE

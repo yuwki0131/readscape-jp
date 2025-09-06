@@ -61,6 +61,11 @@ public class BookSummary {
         return reviewCount != null && reviewCount > 0;
     }
 
+    @Schema(description = "在庫があるかどうか", example = "true")
+    public Boolean isInStock() {
+        return inStock != null ? inStock : false;
+    }
+
     @Schema(description = "平均評価の星表示", example = "★★★★☆")
     @JsonProperty("rating_stars")
     public String getRatingStars() {

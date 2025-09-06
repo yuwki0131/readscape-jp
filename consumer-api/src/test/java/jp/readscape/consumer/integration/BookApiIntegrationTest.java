@@ -240,7 +240,7 @@ class BookApiIntegrationTest {
                         .param("sortBy", "price_asc")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpected(jsonPath("$.books").isArray());
+                .andExpect(jsonPath("$.books").isArray());
     }
 
     private void createTestData() {
@@ -259,7 +259,7 @@ class BookApiIntegrationTest {
         book1.setTitle("Spring Boot実践入門");
         book1.setAuthor("技術太郎");
         book1.setIsbn("9784000000001");
-        book1.setPrice(BigDecimal.valueOf(3200));
+        book1.setPrice(3200);
         book1.setDescription("Spring Bootの実践的な入門書");
         book1.setCategory("技術書");
         book1.setStockQuantity(25);
@@ -273,7 +273,7 @@ class BookApiIntegrationTest {
         book2.setTitle("Java設計パターン");
         book2.setAuthor("パターン花子");
         book2.setIsbn("9784000000002");
-        book2.setPrice(BigDecimal.valueOf(2800));
+        book2.setPrice(2800);
         book2.setDescription("Javaの設計パターン解説書");
         book2.setCategory("技術書");
         book2.setStockQuantity(15);

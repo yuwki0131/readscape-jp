@@ -9,6 +9,10 @@ import jp.readscape.consumer.dto.books.BooksResponse;
 import jp.readscape.consumer.exceptions.BookNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,17 +27,34 @@ import java.util.List;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class BookService {
 
     private final BookRepository bookRepository;
     private final ReviewRepository reviewRepository;
+    private final MeterRegistry meterRegistry;
+    
+    private final Counter bookSearchCounter;
+    private final Counter bookDetailCounter;
+    
+    public BookService(BookRepository bookRepository, ReviewRepository reviewRepository, MeterRegistry meterRegistry) {
+        this.bookRepository = bookRepository;
+        this.reviewRepository = reviewRepository;
+        this.meterRegistry = meterRegistry;
+        this.bookSearchCounter = Counter.builder("readscape.book.search")
+                .description("Book search requests")
+                .register(meterRegistry);
+        this.bookDetailCounter = Counter.builder("readscape.book.detail")
+                .description("Book detail requests")
+                .register(meterRegistry);
+    }
 
     /**
      * 書籍一覧取得
      */
+    @Timed(value = "readscape.book.search.time", description = "Book search processing time")
     public BooksResponse findBooks(String category, String keyword, Integer page, Integer size, String sortBy) {
+        bookSearchCounter.increment();
         log.debug("Finding books with category: {}, keyword: {}, page: {}, size: {}", 
                  category, keyword, page, size);
 
@@ -77,7 +98,9 @@ public class BookService {
     /**
      * 書籍詳細取得
      */
+    @Timed(value = "readscape.book.detail.time", description = "Book detail processing time")
     public BookDetail findBookById(Long bookId) {
+        bookDetailCounter.increment();
         log.debug("Finding book by id: {}", bookId);
 
         Book book = bookRepository.findById(bookId)

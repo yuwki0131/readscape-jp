@@ -16,7 +16,7 @@ services:
       - DB_NAME=readscape
       - DB_USER=readscape_user
       - DB_PASSWORD=readscape_pass
-      - JWT_SECRET=docker-development-jwt-secret-key-256-bits-long-for-secure-authentication
+      - JWT_SECRET=${JWT_SECRET}
       - REDIS_ENABLED=true
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -45,7 +45,7 @@ services:
       - DB_NAME=readscape
       - DB_USER=readscape_user
       - DB_PASSWORD=readscape_pass
-      - JWT_SECRET=docker-development-jwt-secret-key-256-bits-long-for-secure-authentication
+      - JWT_SECRET=${JWT_SECRET}
       - DB_POOL_SIZE=20
       - DB_POOL_MIN_IDLE=5
       - JWT_EXPIRATION=3600000

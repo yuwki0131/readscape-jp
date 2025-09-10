@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: readscape-consumer-api
+  
+  profiles:
+    active: dev
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/readscape
+    username: readscape_user
+    password: readscape_pass
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+      validation-timeout: 5000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Tokyo
+  
+  flyway:
+    enabled: true
+    schemas: readscape
+    locations: filesystem:../infrastructure/database/migrations
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    clean-disabled: true
+  
+  security:
+    jwt:
+      # 本番環境では必ず JWT_SECRET 環境変数を設定してください
+      # 256bit以上のランダムな文字列を使用することを推奨
+      secret: ${JWT_SECRET:CHANGE_THIS_SECRET_IN_PRODUCTION_TO_A_SECURE_RANDOM_256_BIT_STRING}
+      expiration: 3600000  # 1時間（ミリ秒）
+      refresh-expiration: 2592000000  # 30日（ミリ秒）
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+  error:
+    include-stacktrace: never
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    jp.readscape.consumer: INFO
+    org.springframework.security: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    display-request-duration: true
+    groups-order: desc
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+  show-actuator: false
+  group-configs:
+    - group: consumer-api
+      display-name: Consumer API - 全API
+    - group: books-api
+      display-name: Books API - 書籍API
+    - group: auth-api
+      display-name: Auth API - 認証・ユーザー管理API
+    - group: shopping-api
+      display-name: Shopping API - ショッピング機能API

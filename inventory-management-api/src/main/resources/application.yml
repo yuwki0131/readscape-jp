@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: ${APP_NAME:readscape-inventory-api}
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Tokyo
+  
+  flyway:
+    enabled: true
+    schemas: readscape
+    locations: filesystem:../infrastructure/database/migrations
+    baseline-on-migrate: true
+    validate-on-migrate: true
+    clean-disabled: true
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /api
+  error:
+    include-stacktrace: never
+    include-message: always
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    jp.readscape: INFO
+    org.springframework.security: WARN
+
+# OpenAPI Documentation
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    display-request-duration: true
+    groups-order: desc
+    operations-sorter: method
+    tags-sorter: alpha
+    try-it-out-enabled: true
+    persist-authorization: true
+    doc-expansion: none
+  show-actuator: false
+  group-configs:
+    - group: inventory-api
+      display-name: Inventory Management API - 全API
+    - group: admin-books
+      display-name: Admin Books API - 管理者書籍API
+    - group: admin-inventory
+      display-name: Admin Inventory API - 管理者在庫API
+    - group: auth
+      display-name: Auth API - 管理者認証API

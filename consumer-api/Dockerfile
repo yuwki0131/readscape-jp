@@ -6,7 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 # 非ルートユーザーの作成
-RUN groupadd -r appgroup && useradd -r -g appgroup appuser
+RUN groupadd -r appgroup && useradd -r -g appgroup -m appuser
 
 # Gradle Wrapperファイルのコピー
 COPY gradlew .
@@ -26,7 +26,8 @@ COPY src src/
 # アプリケーションのビルド
 RUN ./gradlew build --no-daemon -x test
 
-# 権限設定
+# Gradle cache directory作成と権限設定
+RUN mkdir -p /home/appuser/.gradle && chown -R appuser:appgroup /home/appuser/.gradle
 RUN chown -R appuser:appgroup /app
 
 # ヘルスチェック用のエンドポイント設定

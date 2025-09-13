@@ -1,0 +1,108 @@
+-- 開発環境（H2）用のテーブル作成DDL
+-- PostgreSQL用マイグレーションファイルをH2対応に変換
+
+-- ユーザーテーブル
+CREATE TABLE IF NOT EXISTS users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    phone_number VARCHAR(20),
+    role VARCHAR(20) NOT NULL DEFAULT 'CONSUMER',
+    account_status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 書籍テーブル
+CREATE TABLE IF NOT EXISTS books (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    author VARCHAR(255) NOT NULL,
+    isbn VARCHAR(13) UNIQUE,
+    price DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    category VARCHAR(50),
+    stock_quantity INTEGER NOT NULL DEFAULT 0,
+    average_rating DECIMAL(2,1) DEFAULT 0.0,
+    review_count INTEGER DEFAULT 0,
+    image_url VARCHAR(500),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- カテゴリテーブル
+CREATE TABLE IF NOT EXISTS categories (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- カートテーブル
+CREATE TABLE IF NOT EXISTS cart (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    book_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    UNIQUE(user_id, book_id)
+);
+
+-- 注文テーブル
+CREATE TABLE IF NOT EXISTS orders (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    order_number VARCHAR(50) NOT NULL UNIQUE,
+    order_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    total_amount DECIMAL(10,2) NOT NULL,
+    shipping_address TEXT,
+    payment_method VARCHAR(50),
+    payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 注文詳細テーブル
+CREATE TABLE IF NOT EXISTS order_items (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    book_id BIGINT NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id)
+);
+
+-- レビューテーブル
+CREATE TABLE IF NOT EXISTS reviews (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    book_id BIGINT NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    title VARCHAR(255),
+    comment TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+    UNIQUE(user_id, book_id)
+);
+
+-- インデックス作成
+CREATE INDEX IF NOT EXISTS idx_books_category ON books(category);
+CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
+CREATE INDEX IF NOT EXISTS idx_books_author ON books(author);
+CREATE INDEX IF NOT EXISTS idx_cart_user_id ON cart(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_reviews_book_id ON reviews(book_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON reviews(user_id);

@@ -1,5 +1,6 @@
 package jp.readscape.inventory.services;
 
+import jp.readscape.inventory.constants.BusinessConstants;
 import jp.readscape.inventory.domain.books.model.Book;
 import jp.readscape.inventory.domain.books.repository.BookRepository;
 import jp.readscape.inventory.domain.inventory.model.StockHistory;

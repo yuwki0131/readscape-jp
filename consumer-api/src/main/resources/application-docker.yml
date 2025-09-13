@@ -8,12 +8,15 @@ spring:
     password: ${DB_PASSWORD:readscape_pass}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
       connection-timeout: 30000
       validation-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+      auto-commit: false
   
   jpa:
     hibernate:
@@ -25,6 +28,17 @@ spring:
         format_sql: true
         jdbc:
           time_zone: Asia/Tokyo
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        connection:
+          provider_disables_autocommit: true
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
   
   flyway:
     enabled: true
@@ -33,6 +47,28 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: true
     clean-disabled: true
+  
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 2000ms
+        shutdown-timeout: 100ms
+  
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10分
+      cache-null-values: false
+      use-key-prefix: true
   
   security:
     jwt:
@@ -52,10 +88,22 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when_authorized
+      show-components: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s
 
 logging:
   level:

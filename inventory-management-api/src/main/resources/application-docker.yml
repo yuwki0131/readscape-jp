@@ -11,6 +11,9 @@ spring:
       validation-timeout: 5000
       idle-timeout: 600000
       max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+      auto-commit: false
   
   security:
     jwt:
@@ -20,6 +23,9 @@ spring:
 
 logging:
   level:
+    root: INFO
+    jp.readscape.inventory: INFO
+    org.springframework.security: WARN
     org.flywaydb: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
@@ -30,3 +36,43 @@ springdoc:
     path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+# JPA Performance Settings
+spring:
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        connection:
+          provider_disables_autocommit: true
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+# Enhanced Management Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: always
+    metrics:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 10ms,50ms,100ms,200ms,500ms,1s,2s,5s

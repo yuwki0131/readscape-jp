@@ -164,12 +164,6 @@ public class AdminOrderService {
         return orders.map(dtoMappingService::mapToAdminOrderView);
     }
 
-    /**
-     * レガシー検索メソッド
-     */
-    public Page<AdminOrderView> searchOrders(String keyword, int page, int size) {
-        return searchOrders(keyword, page, size);
-    }
 
     /**
      * 期間別注文取得

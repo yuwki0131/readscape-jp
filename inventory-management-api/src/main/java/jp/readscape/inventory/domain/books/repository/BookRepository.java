@@ -24,7 +24,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
      * タイトルで部分検索
      */
     @Query("SELECT b FROM Book b WHERE b.title ILIKE %:title%")
-    List<Book> findByTitleContaining(@param("title") String title);
+    List<Book> findByTitleContaining(@Param("title") String title);
 
     /**
      * ステータス別検索

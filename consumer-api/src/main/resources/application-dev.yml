@@ -1,14 +1,21 @@
 spring:
+  main:
+    allow-circular-references: true  # 開発環境で循環参照を許可
+
   datasource:
-    url: jdbc:h2:mem:testdb
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
-    password: 
-  
+    password:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
   h2:
     console:
       enabled: true
-  
+      path: /h2-console
+
   jpa:
     hibernate:
       ddl-auto: create-drop
@@ -16,14 +23,37 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+        default_schema: PUBLIC
+        jdbc:
+          time_zone: Asia/Tokyo
+        physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     defer-datasource-initialization: true
-  
+
   flyway:
     enabled: false  # 開発環境ではH2使用のため無効化
-  
+
+  data:
+    redis:
+      enabled: false  # 開発環境ではRedis無効化
+
   security:
     jwt:
-      secret: dev-jwt-secret-key-for-development-only
+      secret: dev-jwt-secret-key-for-development-only-256-bits-long
+      expiration: 86400000  # 24時間（開発環境では長め）
+      refresh-expiration: 604800000  # 7日間（開発環境では短め）
+
+# 開発環境でもOpenAPIを有効化（開発者の利便性のため）
+springdoc:
+  api-docs:
+    enabled: true
+    path: /api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    try-it-out-enabled: true
+  # グループ設定を無効化（開発環境では不要）
+  group-configs: []
 
 logging:
   level:
@@ -33,5 +63,8 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
 
 server:
+  port: 8080
+  servlet:
+    context-path: /
   error:
     include-stacktrace: always

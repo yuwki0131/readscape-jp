@@ -30,6 +30,11 @@ spring:
         physical_naming_strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     defer-datasource-initialization: true
 
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data.sql
+
   flyway:
     enabled: false  # 開発環境ではH2使用のため無効化
 

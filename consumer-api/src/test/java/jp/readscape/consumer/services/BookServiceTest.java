@@ -284,7 +284,7 @@ class BookServiceTest {
         book.setTitle(title);
         book.setAuthor(author);
         book.setIsbn("9784000000000");
-        book.setPrice(BigDecimal.valueOf(2500));
+        book.setPrice(2500);
         book.setDescription("Test description");
         book.setCategory("テスト");
         book.setStockQuantity(10);

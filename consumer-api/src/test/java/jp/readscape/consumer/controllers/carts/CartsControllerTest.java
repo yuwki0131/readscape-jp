@@ -43,7 +43,7 @@ class CartsControllerTest {
                 .cartId(1L)
                 .items(Collections.emptyList())
                 .totalAmount(BigDecimal.ZERO)
-                .itemCount(0)
+                .totalItemCount(0)
                 .build();
 
         when(cartService.getCartByUsername("user")).thenReturn(mockResponse);

@@ -14,7 +14,6 @@ import jp.readscape.consumer.domain.users.model.User;
 import jp.readscape.consumer.dto.reviews.BookReviewsResponse;
 import jp.readscape.consumer.dto.reviews.PostReviewRequest;
 import jp.readscape.consumer.dto.reviews.ReviewResponse;
-import jp.readscape.consumer.dto.reviews.ReviewSummary;
 import jp.readscape.consumer.services.ReviewService;
 import jp.readscape.consumer.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -278,24 +276,4 @@ public class ReviewsController {
         }
     }
 
-    // 独立したユーザーレビュー取得エンドポイント
-    @Operation(
-        summary = "ユーザーのレビュー一覧取得",
-        description = "認証済みユーザーが投稿したレビュー一覧を取得します。",
-        security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "ユーザーレビュー一覧取得成功"),
-        @ApiResponse(responseCode = "401", description = "認証が必要です")
-    })
-    @GetMapping("/my-reviews")
-    @PreAuthorize("hasRole('CONSUMER') or hasRole('ADMIN')")
-    public ResponseEntity<List<ReviewSummary>> getMyReviews(Authentication auth) {
-        log.info("GET /api/books/reviews/my-reviews - user: {}", auth.getName());
-
-        User user = (User) auth.getPrincipal();
-        List<ReviewSummary> reviews = reviewService.getUserReviews(user.getId());
-        
-        return ResponseEntity.ok(reviews);
-    }
 }

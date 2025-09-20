@@ -298,32 +298,7 @@ public class SecurityConfig {
 }
 ```
 
-### 4. Rate Limiting
-
-**API Rate Limiting実装**
-```java
-@Component
-public class RateLimitingFilter implements Filter {
-    
-    private final RateLimiter rateLimiter = RateLimiter.create(100.0); // 100 req/sec
-    
-    @Override
-    public void doFilter(ServletRequest request, ServletResponse response, 
-                        FilterChain chain) throws IOException, ServletException {
-        
-        if (!rateLimiter.tryAcquire()) {
-            HttpServletResponse httpResponse = (HttpServletResponse) response;
-            httpResponse.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            httpResponse.getWriter().write("Rate limit exceeded");
-            return;
-        }
-        
-        chain.doFilter(request, response);
-    }
-}
-```
-
-### 5. 入力検証
+### 4. 入力検証
 
 **Bean Validation設定**
 ```java
@@ -378,7 +353,6 @@ graph LR
 
     subgraph "Security Events"
         D1[不審なアクセス]
-        D2[Rate Limit超過]
         D3[セキュリティエラー]
     end
 ```

@@ -314,7 +314,6 @@ curl -X POST http://localhost:8081/api/admin/inventory/1/stock \
 | 403 | AUTHORIZATION_ERROR | 認可エラー |
 | 404 | RESOURCE_NOT_FOUND | リソースが見つからない |
 | 409 | DUPLICATE_RESOURCE | リソースの重複 |
-| 429 | RATE_LIMIT_EXCEEDED | レート制限超過 |
 | 500 | INTERNAL_SERVER_ERROR | サーバー内部エラー |
 
 ## サポートされるデータ形式

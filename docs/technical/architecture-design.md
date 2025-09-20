@@ -227,7 +227,6 @@ sequenceDiagram
 1. **Network Security**
    - HTTPS通信の強制
    - CORS設定による適切なオリジン制御
-   - Rate Limiting（レート制限）
 
 2. **Application Security**
    - JWT による認証

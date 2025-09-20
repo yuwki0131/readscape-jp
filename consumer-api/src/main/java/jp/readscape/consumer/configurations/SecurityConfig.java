@@ -59,6 +59,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/books/*/reviews/*/helpful").permitAll()  // 「役立った」マークは認証不要
 
                         // 認証が必要なレビューエンドポイント
+                        .requestMatchers(HttpMethod.POST, "/api/books/*/reviews").authenticated()  // レビュー投稿は認証必要
+                        .requestMatchers(HttpMethod.PUT, "/api/books/reviews/*").authenticated()   // レビュー更新は認証必要
+                        .requestMatchers(HttpMethod.DELETE, "/api/books/reviews/*").authenticated() // レビュー削除は認証必要
                         .requestMatchers("/api/books/reviews/my-reviews").authenticated()  // ユーザーレビュー一覧は認証必要
 
                         // 認証関連エンドポイント

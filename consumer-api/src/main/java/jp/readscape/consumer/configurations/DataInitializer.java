@@ -27,10 +27,8 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         log.info("Initializing test data...");
 
-        // Initialize test users if they don't exist
-        if (userRepository.count() == 0) {
-            initializeUsers();
-        }
+        // Initialize test users (always recreate in dev mode for testing)
+        initializeUsersIfNeeded();
 
         // Initialize test books if they don't exist
         if (bookRepository.count() == 0) {
@@ -40,54 +38,74 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Data initialization completed.");
     }
 
+    private void initializeUsersIfNeeded() {
+        // Always recreate test users in dev mode for consistent testing
+        try {
+            // Delete existing test users if they exist
+            userRepository.findByUsername("consumer1").ifPresent(userRepository::delete);
+            userRepository.findByUsername("manager1").ifPresent(userRepository::delete);
+            userRepository.findByUsername("admin1").ifPresent(userRepository::delete);
+
+            log.info("Initializing test users...");
+            initializeUsers();
+        } catch (Exception e) {
+            log.error("Failed to initialize test users: {}", e.getMessage(), e);
+        }
+    }
+
     private void initializeUsers() {
-        String hashedPassword = passwordEncoder.encode("testpass");
-        LocalDateTime now = LocalDateTime.now();
+        try {
+            String hashedPassword = passwordEncoder.encode("testpass");
+            LocalDateTime now = LocalDateTime.now();
 
-        User consumer1 = User.builder()
-                .username("consumer1")
-                .email("consumer1@readscape.jp")
-                .password(hashedPassword)
-                .firstName("一般")
-                .lastName("消費者1")
-                .phone("090-1234-5678")
-                .role(UserRole.CONSUMER)
-                .isActive(true)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+            User consumer1 = User.builder()
+                    .username("consumer1")
+                    .email("consumer1@readscape.jp")
+                    .password(hashedPassword)
+                    .firstName("一般")
+                    .lastName("消費者1")
+                    .phone("090-1234-5678")
+                    .role(UserRole.CONSUMER)
+                    .isActive(true)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
 
-        User manager1 = User.builder()
-                .username("manager1")
-                .email("manager1@readscape.jp")
-                .password(hashedPassword)
-                .firstName("管理")
-                .lastName("者1")
-                .phone("090-1234-5679")
-                .role(UserRole.MANAGER)
-                .isActive(true)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+            User manager1 = User.builder()
+                    .username("manager1")
+                    .email("manager1@readscape.jp")
+                    .password(hashedPassword)
+                    .firstName("管理")
+                    .lastName("者1")
+                    .phone("090-1234-5679")
+                    .role(UserRole.MANAGER)
+                    .isActive(true)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
 
-        User admin1 = User.builder()
-                .username("admin1")
-                .email("admin1@readscape.jp")
-                .password(hashedPassword)
-                .firstName("システム")
-                .lastName("管理者")
-                .phone("090-1234-5680")
-                .role(UserRole.ADMIN)
-                .isActive(true)
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+            User admin1 = User.builder()
+                    .username("admin1")
+                    .email("admin1@readscape.jp")
+                    .password(hashedPassword)
+                    .firstName("システム")
+                    .lastName("管理者")
+                    .phone("090-1234-5680")
+                    .role(UserRole.ADMIN)
+                    .isActive(true)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .build();
 
-        userRepository.save(consumer1);
-        userRepository.save(manager1);
-        userRepository.save(admin1);
+            User savedConsumer = userRepository.save(consumer1);
+            User savedManager = userRepository.save(manager1);
+            User savedAdmin = userRepository.save(admin1);
 
-        log.info("Test users initialized: consumer1, manager1, admin1");
+            log.info("Test users initialized: consumer1 (ID: {}), manager1 (ID: {}), admin1 (ID: {})",
+                    savedConsumer.getId(), savedManager.getId(), savedAdmin.getId());
+        } catch (Exception e) {
+            log.error("Failed to initialize users: {}", e.getMessage(), e);
+        }
     }
 
     private void initializeBooks() {

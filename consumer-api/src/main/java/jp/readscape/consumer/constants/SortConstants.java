@@ -70,12 +70,13 @@ public final class SortConstants {
         if (sortBy == null || sortBy.trim().isEmpty()) {
             return defaultValue;
         }
-        
+
         String trimmedSortBy = sortBy.trim().toLowerCase();
         if (!validValues.contains(trimmedSortBy)) {
-            throw new IllegalArgumentException("無効なソート条件です。有効な値: " + validValues);
+            // 無効なソート条件の場合はデフォルト値を返す（例外は投げない）
+            return defaultValue;
         }
-        
+
         return trimmedSortBy;
     }
 }

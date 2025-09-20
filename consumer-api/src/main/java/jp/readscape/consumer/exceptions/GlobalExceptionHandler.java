@@ -91,6 +91,15 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler({NumberFormatException.class,
+                      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+                      org.springframework.beans.TypeMismatchException.class})
+    public ResponseEntity<ApiResponse> handleTypeMismatchException(Exception ex) {
+        log.warn("Type mismatch exception: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("無効なパラメータ形式です"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime exception occurred", ex);

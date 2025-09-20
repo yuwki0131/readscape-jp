@@ -17,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -37,7 +38,7 @@ public class OrderService {
     /**
      * カートから注文を作成
      */
-    @Transactional
+    @Transactional(isolation = Isolation.SERIALIZABLE, timeout = 30)
     public CreateOrderResponse createOrderFromCart(Long userId, CreateOrderRequest request) {
         log.debug("Creating order from cart for user: {}", userId);
 

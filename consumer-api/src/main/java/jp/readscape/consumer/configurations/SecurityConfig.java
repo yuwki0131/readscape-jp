@@ -60,8 +60,8 @@ public class SecurityConfig {
 
                         // 認証が必要なレビューエンドポイント
                         .requestMatchers(HttpMethod.POST, "/api/books/*/reviews").authenticated()  // レビュー投稿は認証必要
-                        .requestMatchers(HttpMethod.PUT, "/api/books/reviews/*").authenticated()   // レビュー更新は認証必要
-                        .requestMatchers(HttpMethod.DELETE, "/api/books/reviews/*").authenticated() // レビュー削除は認証必要
+                        .requestMatchers(HttpMethod.PUT, "/api/books/*/reviews/*").authenticated()   // レビュー更新は認証必要
+                        .requestMatchers(HttpMethod.DELETE, "/api/books/*/reviews/*").authenticated() // レビュー削除は認証必要
                         .requestMatchers("/api/books/reviews/my-reviews").authenticated()  // ユーザーレビュー一覧は認証必要
 
                         // 認証関連エンドポイント
@@ -86,6 +86,18 @@ public class SecurityConfig {
 
                     auth.anyRequest().authenticated();
                 })
+                .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        response.setStatus(401);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"success\":false,\"message\":\"認証が必要です\",\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}");
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                        response.setStatus(403);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"success\":false,\"message\":\"アクセスが拒否されました\",\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}");
+                    })
+                )
                 .authenticationProvider(authProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

@@ -107,9 +107,14 @@ public class ReviewsController {
             @Valid @RequestBody PostReviewRequest request,
             Authentication auth
     ) {
-        log.info("POST /api/books/{}/reviews - user: {}, rating: {}", bookId, auth.getName(), request.getRating());
+        log.info("POST /api/books/{}/reviews - rating: {}", bookId, request.getRating());
 
         try {
+            if (auth == null || auth.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+            }
+
             User user = (User) auth.getPrincipal();
             ReviewResponse response = reviewService.postReview(bookId, user.getId(), request);
             
@@ -121,7 +126,8 @@ public class ReviewsController {
             log.warn("Book not found for review: {}", bookId);
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
-            log.warn("Review posting failed for book {} by user {}: {}", bookId, auth.getName(), e.getMessage());
+            String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+            log.warn("Review posting failed for book {} by user {}: {}", bookId, username, e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(jp.readscape.consumer.dto.ApiResponse.error(e.getMessage()));
         }

@@ -41,13 +41,13 @@ public class ReviewService {
     public BookReviewsResponse getBookReviews(Long bookId, Integer page, Integer size, String sortBy) {
         log.debug("Getting reviews for book: {}, page: {}, size: {}, sortBy: {}", bookId, page, size, sortBy);
 
-        // 書籍の存在確認
+        // 書籍の存在確認（早期エラーチェック）
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("書籍が見つかりません: " + bookId));
 
         // ページング設定
         Pageable pageable = PageRequest.of(page, size);
-        
+
         // ソート条件に応じてレビューを取得
         Page<Review> reviewPage = getReviewsBySortType(bookId, sortBy, pageable);
 
@@ -122,15 +122,9 @@ public class ReviewService {
         }
 
         // 購入履歴チェック（購入者のみレビュー可能）
-        // 開発環境では購入履歴チェックを無効化
-        boolean isDev = "dev".equals(System.getProperty("spring.profiles.active")) ||
-                       System.getenv("SPRING_PROFILES_ACTIVE") != null && System.getenv("SPRING_PROFILES_ACTIVE").contains("dev");
-
-        if (!isDev) {
-            boolean hasPurchased = reviewRepository.hasUserPurchasedBook(userId, bookId);
-            if (!hasPurchased) {
-                throw new IllegalStateException("購入履歴のある書籍のみレビュー可能です");
-            }
+        boolean hasPurchased = reviewRepository.hasUserPurchasedBook(userId, bookId);
+        if (!hasPurchased) {
+            throw new IllegalStateException("購入履歴のある書籍のみレビュー可能です");
         }
 
         // レビューを作成

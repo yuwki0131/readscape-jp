@@ -95,13 +95,21 @@ public class CartService {
      */
     public void removeFromCart(String username, Long bookId) {
         log.debug("Removing book {} from cart for user: {}", bookId, username);
-        
+
         User user = findUserByUsername(username);
         Cart cart = findCartByUser(user);
-        
+
+        // Check if the item exists in the cart before removing
+        boolean itemExists = cart.getItems().stream()
+                .anyMatch(item -> item.getBook().getId().equals(bookId));
+
+        if (!itemExists) {
+            throw new IllegalArgumentException("指定された商品がカートに存在しません");
+        }
+
         cart.removeItem(bookId);
         cartRepository.save(cart);
-        
+
         log.info("Removed book {} from cart for user: {}", bookId, username);
     }
 
@@ -138,7 +146,7 @@ public class CartService {
 
     private Book findBookById(Long bookId) {
         return bookRepository.findById(bookId)
-                .orElseThrow(() -> new BookNotFoundException("書籍が見つかりません: " + bookId));
+                .orElseThrow(() -> new IllegalArgumentException("指定された書籍が見つかりません: " + bookId));
     }
 
     private Cart findCartByUser(User user) {

@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,10 +52,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> {
                     auth
                         // パブリックエンドポイント
-                        .requestMatchers("/health", "/actuator/**").permitAll()
+                        .requestMatchers("/health", "/health/**", "/actuator/**").permitAll()
                         .requestMatchers("/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/books/**").permitAll()  // 書籍閲覧は認証不要
-                        .requestMatchers("/api/books/*/reviews/**").permitAll()  // レビュー閲覧は認証不要
+                        .requestMatchers("/api/books/**", "/books/**").permitAll()  // 書籍閲覧は認証不要
+                        .requestMatchers(HttpMethod.GET, "/api/books/*/reviews/**").permitAll()  // レビュー閲覧のみ認証不要
+                        .requestMatchers(HttpMethod.POST, "/api/books/*/reviews/*/helpful").permitAll()  // 「役立った」マークは認証不要
+
+                        // 認証が必要なレビューエンドポイント
+                        .requestMatchers(HttpMethod.POST, "/api/books/*/reviews").authenticated()  // レビュー投稿は認証必要
+                        .requestMatchers(HttpMethod.PUT, "/api/books/*/reviews/*").authenticated()   // レビュー更新は認証必要
+                        .requestMatchers(HttpMethod.DELETE, "/api/books/*/reviews/*").authenticated() // レビュー削除は認証必要
+                        .requestMatchers("/api/books/reviews/my-reviews").authenticated()  // ユーザーレビュー一覧は認証必要
 
                         // 認証関連エンドポイント
                         .requestMatchers("/api/auth/**").permitAll()
@@ -78,6 +86,18 @@ public class SecurityConfig {
 
                     auth.anyRequest().authenticated();
                 })
+                .exceptionHandling(ex -> ex
+                    .authenticationEntryPoint((request, response, authException) -> {
+                        response.setStatus(401);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"success\":false,\"message\":\"認証が必要です\",\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}");
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                        response.setStatus(403);
+                        response.setContentType("application/json;charset=UTF-8");
+                        response.getWriter().write("{\"success\":false,\"message\":\"アクセスが拒否されました\",\"timestamp\":\"" + java.time.LocalDateTime.now() + "\"}");
+                    })
+                )
                 .authenticationProvider(authProvider)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

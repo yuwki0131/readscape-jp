@@ -18,6 +18,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -237,7 +239,8 @@ public class BookService {
     /**
      * 書籍の評価情報を更新
      */
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED,
+                   propagation = Propagation.REQUIRES_NEW)
     public void updateBookRating(Long bookId) {
         log.debug("Updating book rating for book: {}", bookId);
 

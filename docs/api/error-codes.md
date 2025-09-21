@@ -137,29 +137,7 @@
 }
 ```
 
-### 5️⃣ レート制限エラー (429)
-
-| エラーコード | HTTP | メッセージ | 原因・対処法 |
-|-------------|------|-----------|-------------|
-| `RATE_LIMIT_EXCEEDED` | 429 | レート制限を超えました | 時間をおいて再試行 |
-| `TOO_MANY_REQUESTS` | 429 | リクエストが多すぎます | 待機後再試行 |
-
-#### 例: レート制限エラー
-
-```json
-{
-  "error": "RATE_LIMIT_EXCEEDED",
-  "message": "1時間あたりのリクエスト制限を超えました",
-  "status": 429,
-  "details": {
-    "limit": 1000,
-    "resetTime": "2024-01-15T11:00:00Z"
-  },
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### 6️⃣ サーバーエラー (5xx)
+### 5️⃣ サーバーエラー (5xx)
 
 | エラーコード | HTTP | メッセージ | 原因・対処法 |
 |-------------|------|-----------|-------------|
@@ -227,7 +205,6 @@ async function apiRequest(url, options) {
 | エラータイプ | リトライ推奨 | 待機時間 | 最大回数 |
 |-------------|-------------|----------|----------|
 | `TOKEN_EXPIRED` | ✅ 即時 | なし | 1回 |
-| `RATE_LIMIT_EXCEEDED` | ✅ 指数バックオフ | 1分〜 | 3回 |
 | `INTERNAL_SERVER_ERROR` | ✅ 指数バックオフ | 1秒〜 | 3回 |
 | `INSUFFICIENT_STOCK` | ❌ なし | - | - |
 | `VALIDATION_ERROR` | ❌ なし | - | - |
@@ -259,8 +236,6 @@ async function apiRequest(url, options) {
 
 ```
 X-Request-ID: req_abc123def456
-X-Rate-Limit-Remaining: 95
-X-Rate-Limit-Reset: 1642248600
 ```
 
 ### トレースID

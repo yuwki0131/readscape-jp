@@ -48,12 +48,12 @@ class AuthControllerTest {
     void loginSuccess() throws Exception {
         // Arrange
         LoginRequest request = LoginRequest.builder()
-            .email("test@example.com")
+            .usernameOrEmail("test@example.com")
             .password("password123")
             .build();
 
         LoginResponse response = LoginResponse.builder()
-            .token("jwt-access-token")
+            .accessToken("jwt-access-token")
             .refreshToken("jwt-refresh-token")
             .expiresIn(3600)
             .user(createSampleUserProfile())
@@ -82,7 +82,7 @@ class AuthControllerTest {
     void loginInvalidCredentials() throws Exception {
         // Arrange
         LoginRequest request = LoginRequest.builder()
-            .email("test@example.com")
+            .usernameOrEmail("test@example.com")
             .password("wrongpassword")
             .build();
 
@@ -310,7 +310,7 @@ class AuthControllerTest {
     private UserProfile createSampleUserProfile() {
         return UserProfile.builder()
             .id(1L)
-            .email("test@example.com")
+            .usernameOrEmail("test@example.com")
             .name("テストユーザー")
             .phoneNumber("090-1234-5678")
             .address("東京都渋谷区")

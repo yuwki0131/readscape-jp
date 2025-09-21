@@ -11,6 +11,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UpdateProfileRequest {
 
+    @Size(min = 3, max = 50, message = "ユーザー名は3-50文字で入力してください")
+    private String username;
+
     @Email(message = "有効なメールアドレスを入力してください")
     private String email;
 

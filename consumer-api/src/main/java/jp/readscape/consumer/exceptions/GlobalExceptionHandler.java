@@ -91,11 +91,34 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
+    @ExceptionHandler({NumberFormatException.class,
+                      org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+                      org.springframework.beans.TypeMismatchException.class})
+    public ResponseEntity<ApiResponse> handleTypeMismatchException(Exception ex) {
+        log.warn("Type mismatch exception: {}", ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error("無効なパラメータ形式です"));
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ApiResponse> handleRuntimeException(RuntimeException ex) {
         log.error("Runtime exception occurred", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("内部サーバーエラーが発生しました"));
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiResponse> handleAccessDeniedException(org.springframework.security.access.AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("アクセスが拒否されました"));
+    }
+
+    @ExceptionHandler(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<ApiResponse> handleAuthenticationCredentialsNotFoundException(org.springframework.security.authentication.AuthenticationCredentialsNotFoundException ex) {
+        log.warn("Authentication credentials not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("認証が必要です"));
     }
 
     @ExceptionHandler(Exception.class)

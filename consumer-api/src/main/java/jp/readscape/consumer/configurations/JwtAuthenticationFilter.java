@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -56,24 +57,31 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // ユーザー認証
+        // ユーザー認証（スレッドセーフティ強化）
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
+                // UserDetailsの取得をキャッシュして重複ロードを防ぐ
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                
+
                 if (jwtService.isTokenValid(jwt, userDetails)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                            userDetails,
-                            null,
-                            userDetails.getAuthorities()
-                    );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authToken);
-                    
-                    log.debug("JWT authentication successful for user: {}", username);
+                    // SecurityContextの重複チェック（ダブルチェック）
+                    SecurityContext context = SecurityContextHolder.getContext();
+                    if (context.getAuthentication() == null) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        context.setAuthentication(authToken);
+
+                        log.debug("JWT authentication successful for user: {}", username);
+                    }
                 }
             } catch (Exception e) {
                 log.debug("JWT authentication failed for user {}: {}", username, e.getMessage());
+                // 認証失敗時はSecurityContextをクリア
+                SecurityContextHolder.clearContext();
             }
         }
 

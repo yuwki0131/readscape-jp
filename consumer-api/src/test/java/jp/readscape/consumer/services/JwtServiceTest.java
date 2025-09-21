@@ -13,6 +13,8 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Map;
+
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Date;
@@ -337,7 +339,7 @@ class JwtServiceTest {
     void generateToken_WithCustomClaims_ShouldIncludeAllClaims() {
         // Given
         jwtService.validateConfiguration();
-        var customClaims = java.util.Map.of(
+        Map<String, Object> customClaims = java.util.Map.of(
                 "customClaim", "customValue",
                 "userId", 123L
         );

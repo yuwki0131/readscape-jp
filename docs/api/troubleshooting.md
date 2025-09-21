@@ -364,72 +364,9 @@ async function getCachedBooks(category) {
 }
 ```
 
-### 9. 429 Too Many Requests
-
-#### 症状
-```json
-{
-  "error": "RATE_LIMIT_EXCEEDED",
-  "message": "リクエスト制限を超過しました",
-  "status": 429,
-  "timestamp": "2024-01-15T10:30:00Z",
-  "path": "/api/books"
-}
-```
-
-#### 解決方法
-
-```javascript
-// レート制限を考慮したAPIクライアント
-class RateLimitedApiClient {
-  constructor(requestsPerMinute = 60) {
-    this.requestTimes = [];
-    this.maxRequests = requestsPerMinute;
-  }
-  
-  async makeRequest(url, options) {
-    await this.waitIfNecessary();
-    
-    const response = await fetch(url, options);
-    
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After') || 60;
-      console.log(`Rate limited. Waiting ${retryAfter} seconds...`);
-      
-      await new Promise(resolve => 
-        setTimeout(resolve, retryAfter * 1000)
-      );
-      
-      return this.makeRequest(url, options);
-    }
-    
-    return response;
-  }
-  
-  async waitIfNecessary() {
-    const now = Date.now();
-    const minuteAgo = now - 60000;
-    
-    // 1分以内のリクエストをフィルタ
-    this.requestTimes = this.requestTimes.filter(time => time > minuteAgo);
-    
-    if (this.requestTimes.length >= this.maxRequests) {
-      const oldestRequest = Math.min(...this.requestTimes);
-      const waitTime = oldestRequest + 60000 - now;
-      
-      if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-      }
-    }
-    
-    this.requestTimes.push(now);
-  }
-}
-```
-
 ## データ形式の問題
 
-### 10. 日付形式の問題
+### 9. 日付形式の問題
 
 #### 問題
 ```javascript

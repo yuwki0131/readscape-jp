@@ -14,7 +14,6 @@ import jp.readscape.consumer.domain.users.model.User;
 import jp.readscape.consumer.dto.reviews.BookReviewsResponse;
 import jp.readscape.consumer.dto.reviews.PostReviewRequest;
 import jp.readscape.consumer.dto.reviews.ReviewResponse;
-import jp.readscape.consumer.dto.reviews.ReviewSummary;
 import jp.readscape.consumer.services.ReviewService;
 import jp.readscape.consumer.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 
 @Slf4j
 @RestController
@@ -109,9 +107,14 @@ public class ReviewsController {
             @Valid @RequestBody PostReviewRequest request,
             Authentication auth
     ) {
-        log.info("POST /api/books/{}/reviews - user: {}, rating: {}", bookId, auth.getName(), request.getRating());
+        log.info("POST /api/books/{}/reviews - rating: {}", bookId, request.getRating());
 
         try {
+            if (auth == null || auth.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+            }
+
             User user = (User) auth.getPrincipal();
             ReviewResponse response = reviewService.postReview(bookId, user.getId(), request);
             
@@ -123,7 +126,8 @@ public class ReviewsController {
             log.warn("Book not found for review: {}", bookId);
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
-            log.warn("Review posting failed for book {} by user {}: {}", bookId, auth.getName(), e.getMessage());
+            String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+            log.warn("Review posting failed for book {} by user {}: {}", bookId, username, e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(jp.readscape.consumer.dto.ApiResponse.error(e.getMessage()));
         }
@@ -278,24 +282,4 @@ public class ReviewsController {
         }
     }
 
-    // 独立したユーザーレビュー取得エンドポイント
-    @Operation(
-        summary = "ユーザーのレビュー一覧取得",
-        description = "認証済みユーザーが投稿したレビュー一覧を取得します。",
-        security = @SecurityRequirement(name = "bearerAuth")
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "ユーザーレビュー一覧取得成功"),
-        @ApiResponse(responseCode = "401", description = "認証が必要です")
-    })
-    @GetMapping("/my-reviews")
-    @PreAuthorize("hasRole('CONSUMER') or hasRole('ADMIN')")
-    public ResponseEntity<List<ReviewSummary>> getMyReviews(Authentication auth) {
-        log.info("GET /api/books/reviews/my-reviews - user: {}", auth.getName());
-
-        User user = (User) auth.getPrincipal();
-        List<ReviewSummary> reviews = reviewService.getUserReviews(user.getId());
-        
-        return ResponseEntity.ok(reviews);
-    }
 }

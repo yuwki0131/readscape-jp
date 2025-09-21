@@ -58,7 +58,7 @@ class ReviewServiceTest {
                 .title("Test Book")
                 .author("Test Author")
                 .isbn("9781234567890")
-                .price(BigDecimal.valueOf(1500))
+                .price(1500)
                 .averageRating(BigDecimal.valueOf(4.2))
                 .reviewCount(10)
                 .build();
@@ -66,7 +66,8 @@ class ReviewServiceTest {
         testUser = User.builder()
                 .id(1L)
                 .username("testuser@example.com")
-                .displayName("Test User")
+                .firstName("Test")
+                .lastName("User")
                 .build();
 
         testReview = Review.builder()

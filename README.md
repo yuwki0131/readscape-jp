@@ -152,7 +152,7 @@ docker-compose build
 | `GET/POST/PUT/DELETE /api/cart` | カート操作 |
 | `POST /api/orders` | 注文作成 |
 
-### Inventory Management API (Port: 8081)  
+### Inventory Management API (Port: 8081)
 管理者・マネージャー向けの在庫・注文管理機能を提供
 
 | エンドポイント | 説明 |
@@ -182,7 +182,7 @@ docker-compose build
 # Consumer API
 curl http://localhost:8080/actuator/health
 
-# Inventory Management API  
+# Inventory Management API
 curl http://localhost:8081/actuator/health
 ```
 
@@ -224,24 +224,3 @@ docker-compose -f docker-compose.prod.yml up -d
 - [Java コーディング標準](./docs/standards/java-coding-standards.md) に従う
 - テストカバレッジ80%以上を維持
 - 全APIに適切なOpenAPI仕様を記述
-
-## 📝 ライセンス
-
-このプロジェクトはMITライセンスの下で公開されています。詳細は [LICENSE](./LICENSE) ファイルをご確認ください。
-
-## 📞 サポート
-
-### 開発者向けサポート
-- **技術的な質問**: api-support@readscape.jp  
-- **GitHub Issues**: https://github.com/readscape-jp/api-issues
-- **開発者フォーラム**: https://forum.readscape.jp/api
-
-### システム管理者向け
-- **運用サポート**: ops-support@readscape.jp
-- **セキュリティ関連**: security@readscape.jp
-
----
-
-**プロジェクト**: Readscape-JP  
-**バージョン**: v0.0.1-SNAPSHOT  
-**最終更新**: 2024年1月15日

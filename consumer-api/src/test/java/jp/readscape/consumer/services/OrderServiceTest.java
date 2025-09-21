@@ -67,7 +67,7 @@ class OrderServiceTest {
                 .title("Test Book")
                 .author("Test Author")
                 .isbn("9781234567890")
-                .price(BigDecimal.valueOf(1500))
+                .price(1500)
                 .stockQuantity(10)
                 .build();
 
@@ -75,8 +75,7 @@ class OrderServiceTest {
                 .id(1L)
                 .book(testBook)
                 .quantity(2)
-                .unitPrice(BigDecimal.valueOf(1500))
-                .subtotal(BigDecimal.valueOf(3000))
+                .unitPrice(1500)
                 .build();
 
         testCart = Cart.builder()
@@ -427,7 +426,7 @@ class OrderServiceTest {
                 .title("Second Book")
                 .author("Second Author")
                 .isbn("9780987654321")
-                .price(BigDecimal.valueOf(2000))
+                .price(2000)
                 .stockQuantity(5)
                 .build();
 
@@ -435,8 +434,7 @@ class OrderServiceTest {
                 .id(2L)
                 .book(secondBook)
                 .quantity(1)
-                .unitPrice(BigDecimal.valueOf(2000))
-                .subtotal(BigDecimal.valueOf(2000))
+                .unitPrice(2000)
                 .build();
 
         testCart.getItems().add(secondCartItem);

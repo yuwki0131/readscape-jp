@@ -55,25 +55,31 @@ public class OrdersController {
             @Valid @RequestBody CreateOrderRequest request,
             Authentication auth
     ) {
-        log.info("POST /api/orders - user: {}", auth.getName());
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("POST /api/orders - user: {}", username);
 
         try {
+            if (auth == null || auth.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+            }
+
             User user = (User) auth.getPrincipal();
             CreateOrderResponse response = orderService.createOrderFromCart(user.getId(), request);
-            
+
             log.info("Order created successfully: {} for user: {}", response.getOrderNumber(), user.getUsername());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-            
+
         } catch (IllegalArgumentException e) {
-            log.warn("Order creation failed for user {}: {}", auth.getName(), e.getMessage());
+            log.warn("Order creation failed for user {}: {}", username, e.getMessage());
             return ResponseEntity.badRequest()
                     .body(jp.readscape.consumer.dto.ApiResponse.error(e.getMessage()));
         } catch (IllegalStateException e) {
-            log.warn("Order creation failed due to business rule violation for user {}: {}", auth.getName(), e.getMessage());
+            log.warn("Order creation failed due to business rule violation for user {}: {}", username, e.getMessage());
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(jp.readscape.consumer.dto.ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
-            log.error("Unexpected error during order creation for user {}: {}", auth.getName(), e.getMessage(), e);
+            log.error("Unexpected error during order creation for user {}: {}", username, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(jp.readscape.consumer.dto.ApiResponse.error("注文処理中にエラーが発生しました"));
         }
@@ -90,12 +96,18 @@ public class OrdersController {
     })
     @GetMapping
     @PreAuthorize("hasRole('CONSUMER') or hasRole('ADMIN')")
-    public ResponseEntity<List<OrderSummary>> getOrders(Authentication auth) {
-        log.info("GET /api/orders - user: {}", auth.getName());
+    public ResponseEntity<?> getOrders(Authentication auth) {
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("GET /api/orders - user: {}", username);
+
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+        }
 
         User user = (User) auth.getPrincipal();
         List<OrderSummary> orders = orderService.getUserOrders(user.getId());
-        
+
         return ResponseEntity.ok(orders);
     }
 
@@ -116,15 +128,21 @@ public class OrdersController {
             @PathVariable Long id,
             Authentication auth
     ) {
-        log.info("GET /api/orders/{} - user: {}", id, auth.getName());
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("GET /api/orders/{} - user: {}", id, username);
 
         try {
+            if (auth == null || auth.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+            }
+
             User user = (User) auth.getPrincipal();
             OrderDetail orderDetail = orderService.getOrderDetail(id, user.getId());
-            
+
             return ResponseEntity.ok(orderDetail);
         } catch (IllegalArgumentException e) {
-            log.warn("Order not found or access denied: {} for user: {}", id, auth.getName());
+            log.warn("Order not found or access denied: {} for user: {}", id, username);
             return ResponseEntity.notFound().build();
         }
     }
@@ -140,12 +158,18 @@ public class OrdersController {
     })
     @GetMapping("/recent")
     @PreAuthorize("hasRole('CONSUMER') or hasRole('ADMIN')")
-    public ResponseEntity<List<OrderSummary>> getRecentOrders(
+    public ResponseEntity<?> getRecentOrders(
             @Parameter(description = "取得件数", example = "5")
             @RequestParam(defaultValue = "5") Integer limit,
             Authentication auth
     ) {
-        log.info("GET /api/orders/recent?limit={} - user: {}", limit, auth.getName());
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("GET /api/orders/recent?limit={} - user: {}", limit, username);
+
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+        }
 
         if (limit <= 0 || limit > 20) {
             limit = 5; // デフォルト値に戻す
@@ -153,7 +177,7 @@ public class OrdersController {
 
         User user = (User) auth.getPrincipal();
         List<OrderSummary> recentOrders = orderService.getRecentUserOrders(user.getId(), limit);
-        
+
         return ResponseEntity.ok(recentOrders);
     }
 
@@ -177,22 +201,32 @@ public class OrdersController {
             @PathVariable Long id,
             Authentication auth
     ) {
-        log.info("POST /api/orders/{}/cancel - user: {}", id, auth.getName());
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("POST /api/orders/{}/cancel - user: {}", id, username);
 
         try {
+            if (auth == null || auth.getPrincipal() == null) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+            }
+
             User user = (User) auth.getPrincipal();
             orderService.cancelOrder(id, user.getId());
-            
+
             log.info("Order cancelled successfully: {} for user: {}", id, user.getUsername());
             return ResponseEntity.ok(jp.readscape.consumer.dto.ApiResponse.success("注文をキャンセルしました"));
-            
+
         } catch (IllegalArgumentException e) {
-            log.warn("Order not found for cancellation: {} for user: {}", id, auth.getName());
+            log.warn("Order not found for cancellation: {} for user: {}", id, username);
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
             log.warn("Order cancellation failed for order {}: {}", id, e.getMessage());
             return ResponseEntity.badRequest()
                     .body(jp.readscape.consumer.dto.ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Unexpected error during order cancellation for order {} by user {}: {}", id, username, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(jp.readscape.consumer.dto.ApiResponse.error("注文キャンセル処理中にエラーが発生しました"));
         }
     }
 
@@ -207,12 +241,18 @@ public class OrdersController {
     })
     @GetMapping("/statistics")
     @PreAuthorize("hasRole('CONSUMER') or hasRole('ADMIN')")
-    public ResponseEntity<OrderService.OrderStatistics> getOrderStatistics(Authentication auth) {
-        log.info("GET /api/orders/statistics - user: {}", auth.getName());
+    public ResponseEntity<?> getOrderStatistics(Authentication auth) {
+        String username = (auth != null && auth.getName() != null) ? auth.getName() : "unknown";
+        log.info("GET /api/orders/statistics - user: {}", username);
+
+        if (auth == null || auth.getPrincipal() == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(jp.readscape.consumer.dto.ApiResponse.error("認証が必要です"));
+        }
 
         User user = (User) auth.getPrincipal();
         OrderService.OrderStatistics statistics = orderService.getOrderStatistics(user.getId());
-        
+
         return ResponseEntity.ok(statistics);
     }
 }

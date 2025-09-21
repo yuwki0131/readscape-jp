@@ -3,8 +3,8 @@ package jp.readscape.consumer.services;
 import jp.readscape.consumer.domain.users.model.User;
 import jp.readscape.consumer.domain.users.model.UserRole;
 import jp.readscape.consumer.domain.users.repository.UserRepository;
-import jp.readscape.consumer.dto.users.LoginRequest;
-import jp.readscape.consumer.dto.users.LoginResponse;
+import jp.readscape.consumer.dto.auth.LoginRequest;
+import jp.readscape.consumer.dto.auth.LoginResponse;
 import jp.readscape.consumer.dto.users.RegisterUserRequest;
 import jp.readscape.consumer.dto.users.UserProfile;
 import jp.readscape.consumer.exceptions.UserNotFoundException;
@@ -59,7 +59,7 @@ class UserServiceTest {
     void registerUser_Success() {
         // Given
         RegisterUserRequest registerRequest = RegisterUserRequest.builder()
-                .username("testuser")
+                .usernameOrEmail("testuser")
                 .email("test@example.com")
                 .password("password123")
                 .build();
@@ -72,7 +72,7 @@ class UserServiceTest {
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
         // When
-        UserProfile result = userService.registerUser(registerRequest, request);
+        UserProfile result = userService.registerUser(registerRequest);
 
         // Then
         assertThat(result).isNotNull();
@@ -83,7 +83,7 @@ class UserServiceTest {
         verify(userRepository).existsByEmail("test@example.com");
         verify(passwordEncoder).encode("password123");
         verify(userRepository).save(any(User.class));
-        verify(securityAuditService).logUserRegistration(eq("test@example.com"), any(HttpServletRequest.class));
+        verify(securityAuditService).logUserRegistration(eq("test@example.com"), anyString());
     }
 
     @Test
@@ -99,7 +99,7 @@ class UserServiceTest {
         when(userRepository.existsByUsername("existinguser")).thenReturn(true);
 
         // When & Then
-        assertThatThrownBy(() -> userService.registerUser(registerRequest, request))
+        assertThatThrownBy(() -> userService.registerUser(registerRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("既に使用されているユーザー名です");
 
@@ -112,7 +112,7 @@ class UserServiceTest {
     void registerUser_DuplicateEmail() {
         // Given
         RegisterUserRequest registerRequest = RegisterUserRequest.builder()
-                .username("testuser")
+                .usernameOrEmail("testuser")
                 .email("existing@example.com")
                 .password("password123")
                 .build();
@@ -121,7 +121,7 @@ class UserServiceTest {
         when(userRepository.existsByEmail("existing@example.com")).thenReturn(true);
 
         // When & Then
-        assertThatThrownBy(() -> userService.registerUser(registerRequest, request))
+        assertThatThrownBy(() -> userService.registerUser(registerRequest))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("既に使用されているメールアドレスです");
 
@@ -134,33 +134,24 @@ class UserServiceTest {
     void authenticateUser_Success() {
         // Given
         LoginRequest loginRequest = LoginRequest.builder()
-                .username("testuser")
+                .usernameOrEmail("testuser")
                 .password("password123")
                 .build();
 
         User user = createTestUser(1L, "testuser", "test@example.com", "encodedPassword");
         Authentication authentication = mock(Authentication.class);
 
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(authentication);
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(jwtService.generateToken(user)).thenReturn("jwt-token");
-        when(jwtService.generateRefreshToken(user)).thenReturn("refresh-token");
+        when(userRepository.findByUsernameOrEmail("testuser")).thenReturn(Optional.of(user));
 
         // When
-        LoginResponse result = userService.authenticateUser(loginRequest, request);
+        Optional<User> result = userService.authenticateUser(loginRequest.getUsernameOrEmail(), loginRequest.getPassword());
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getAccessToken()).isEqualTo("jwt-token");
-        assertThat(result.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(result.getUser().getUsername()).isEqualTo("testuser");
+        assertThat(result).isPresent();
+        assertThat(result.get().getUsername()).isEqualTo("testuser");
+        assertThat(result.get().getEmail()).isEqualTo("test@example.com");
 
-        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(userRepository).findByUsername("testuser");
-        verify(jwtService).generateToken(user);
-        verify(jwtService).generateRefreshToken(user);
-        verify(securityAuditService).logSuccessfulLogin(eq("test@example.com"), any(HttpServletRequest.class));
+        verify(userRepository).findByUsernameOrEmail("testuser");
     }
 
     @Test
@@ -168,19 +159,18 @@ class UserServiceTest {
     void authenticateUser_BadCredentials() {
         // Given
         LoginRequest loginRequest = LoginRequest.builder()
-                .username("testuser")
+                .usernameOrEmail("testuser")
                 .password("wrongpassword")
                 .build();
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        // When & Then
-        assertThatThrownBy(() -> userService.authenticateUser(loginRequest, request))
-                .isInstanceOf(BadCredentialsException.class);
+        // When
+        Optional<User> result = userService.authenticateUser(loginRequest.getUsernameOrEmail(), loginRequest.getPassword());
 
-        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verifyNoInteractions(jwtService);
+        // Then
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -189,16 +179,16 @@ class UserServiceTest {
         // Given
         String username = "testuser";
         User user = createTestUser(1L, username, "test@example.com", "encodedPassword");
-        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameOrEmail(username)).thenReturn(Optional.of(user));
 
         // When
-        User result = userService.findByUsername(username);
+        Optional<User> result = userService.findByUsername(username);
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(username);
+        assertThat(result).isPresent();
+        assertThat(result.get().getUsername()).isEqualTo(username);
 
-        verify(userRepository).findByUsername(username);
+        verify(userRepository).findByUsernameOrEmail(username);
     }
 
     @Test
@@ -222,36 +212,36 @@ class UserServiceTest {
         // Given
         String email = "test@example.com";
         User user = createTestUser(1L, "testuser", email, "encodedPassword");
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByUsernameOrEmail(email)).thenReturn(Optional.of(user));
 
         // When
-        User result = userService.findByEmail(email);
+        Optional<User> result = userService.findByUsername(email);
 
         // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getEmail()).isEqualTo(email);
+        assertThat(result).isPresent();
+        assertThat(result.get().getEmail()).isEqualTo(email);
 
-        verify(userRepository).findByEmail(email);
+        verify(userRepository).findByUsernameOrEmail(email);
     }
 
     @Test
     @DisplayName("ユーザープロフィール取得 - 成功")
     void getUserProfile_Success() {
         // Given
-        String username = "testuser";
-        User user = createTestUser(1L, username, "test@example.com", "encodedPassword");
-        when(userRepository.findByUsername(username)).thenReturn(Optional.of(user));
+        Long userId = 1L;
+        User user = createTestUser(userId, "testuser", "test@example.com", "encodedPassword");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // When
-        UserProfile result = userService.getUserProfile(username);
+        UserProfile result = userService.getUserProfile(userId);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getUsername()).isEqualTo(username);
+        assertThat(result.getUsername()).isEqualTo("testuser");
         assertThat(result.getEmail()).isEqualTo("test@example.com");
         assertThat(result.getRole()).isEqualTo("CONSUMER");
 
-        verify(userRepository).findByUsername(username);
+        verify(userRepository).findById(userId);
     }
 
     @Test
@@ -305,8 +295,9 @@ class UserServiceTest {
         user.setId(id);
         user.setUsername(username);
         user.setEmail(email);
-        user.setPasswordHash(passwordHash);
+        user.setPassword(passwordHash);
         user.setRole(UserRole.CONSUMER);
+        user.setIsActive(true);
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
         return user;

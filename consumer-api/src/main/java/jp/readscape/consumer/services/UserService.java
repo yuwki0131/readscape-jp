@@ -211,6 +211,14 @@ public class UserService implements UserDetailsService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません: " + userId));
 
+        // ユーザー名の重複チェック（自分以外）
+        if (request.getUsername() != null && !request.getUsername().equals(user.getUsername())) {
+            if (userRepository.existsByUsername(request.getUsername())) {
+                throw new IllegalArgumentException("ユーザー名が既に使用されています: " + request.getUsername());
+            }
+            user.setUsername(request.getUsername());
+        }
+
         // メールアドレスの重複チェック（自分以外）
         if (request.getEmail() != null && !request.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(request.getEmail())) {

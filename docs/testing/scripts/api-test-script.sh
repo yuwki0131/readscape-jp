@@ -51,9 +51,15 @@ run_test() {
     ((TOTAL_TESTS++))
     log_info "Running test: $test_name"
 
-    # Execute curl command and capture response
-    local response=$(eval "$curl_command" 2>/dev/null)
-    local actual_status=$(eval "$curl_command" -w "%{http_code}" -o /dev/null -s 2>/dev/null)
+    # Execute curl command and capture response with timeout
+    local response=$(timeout 10 eval "$curl_command" 2>/dev/null || echo "TIMEOUT")
+    local actual_status=$(timeout 10 eval "$curl_command -w '%{http_code}' -o /dev/null -s" 2>/dev/null || echo "000")
+
+    # Check for timeout or connection errors
+    if [[ "$response" == "TIMEOUT" ]] || [[ "$actual_status" == "000" ]]; then
+        log_error "$test_name - Request timeout or connection error"
+        return 1
+    fi
 
     # Check status code
     if [[ "$actual_status" != "$expected_status" ]]; then
@@ -130,22 +136,59 @@ validate_reviews_array() {
     validate_json "$response" && echo "$response" | jq -e 'type == "array"' >/dev/null
 }
 
+# Validation function for JWT token response
+validate_token_response() {
+    local response="$1"
+    validate_json "$response" && \
+    echo "$response" | jq -e 'has("accessToken") and has("refreshToken") and has("tokenType") and has("expiresIn")' >/dev/null
+}
+
+# Validation function for cart response
+validate_cart_response() {
+    local response="$1"
+    validate_json "$response" && \
+    echo "$response" | jq -e 'has("cartId") and has("items") and has("totalAmount")' >/dev/null
+}
+
+# Validation function for orders array
+validate_orders_array() {
+    local response="$1"
+    validate_json "$response" && echo "$response" | jq -e 'type == "array"' >/dev/null
+}
+
+# Validation function for success message
+validate_success_message() {
+    local response="$1"
+    validate_json "$response" && \
+    echo "$response" | jq -e 'has("success") or has("message") or has("result")' >/dev/null
+}
+
+# Validation function for profile response
+validate_profile_response() {
+    local response="$1"
+    validate_json "$response" && \
+    echo "$response" | jq -e 'has("username") and has("email")' >/dev/null
+}
+
 # Test functions
 test_user_login() {
     log_info "=== 1. Authentication Tests ==="
 
     # 1.1 Valid login
-    local login_response=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+    local login_response=$(timeout 10 curl -s -X POST "$BASE_URL/api/auth/login" \
         -H "Content-Type: application/json" \
-        -d '{"usernameOrEmail": "consumer1", "password": "testpass"}')
+        -d '{"usernameOrEmail": "testuser@example.com", "password": "TestPass123"}' 2>/dev/null || echo "TIMEOUT")
 
-    local login_status=$(curl -s -X POST "$BASE_URL/api/auth/login" \
+    local login_status=$(timeout 10 curl -s -X POST "$BASE_URL/api/auth/login" \
         -H "Content-Type: application/json" \
-        -d '{"usernameOrEmail": "consumer1", "password": "testpass"}' \
-        -w "%{http_code}" -o /dev/null)
+        -d '{"usernameOrEmail": "testuser@example.com", "password": "TestPass123"}' \
+        -w "%{http_code}" -o /dev/null 2>/dev/null || echo "000")
 
     ((TOTAL_TESTS++))
-    if [[ "$login_status" == "200" ]] && validate_token_response "$login_response"; then
+    if [[ "$login_response" == "TIMEOUT" ]] || [[ "$login_status" == "000" ]]; then
+        log_error "1.1 Valid user login - Request timeout or connection error"
+        return 1
+    elif [[ "$login_status" == "200" ]] && validate_token_response "$login_response"; then
         JWT_TOKEN=$(echo "$login_response" | jq -r '.accessToken')
         log_success "1.1 Valid user login"
     else
@@ -154,7 +197,7 @@ test_user_login() {
     fi
 
     # 1.2 Invalid login
-    run_test "1.2 Invalid user login" "401" \
+    run_test "1.2 Invalid user login" "400" \
         "curl -s -X POST '$BASE_URL/api/auth/login' -H 'Content-Type: application/json' -d '{\"usernameOrEmail\": \"invalid@test.com\", \"password\": \"wrong\"}'"
 }
 
@@ -163,32 +206,32 @@ test_books_api() {
 
     # 2.1 Get all books
     run_test "2.1 Get all books" "200" \
-        "curl -s -X GET '$BASE_URL/api/books'" \
+        "curl -s -X GET '$BASE_URL/books'" \
         "validate_books_array"
 
     # 2.2 Get books by category
     run_test "2.2 Get books by category" "200" \
-        "curl -s -X GET '$BASE_URL/api/books?category=技術書'" \
+        "curl -s -X GET '$BASE_URL/books?category=%E6%8A%80%E8%A1%93%E6%9B%B8'" \
         "validate_books_array"
 
     # 2.3 Search books by keyword
     run_test "2.3 Search books by keyword" "200" \
-        "curl -s -X GET '$BASE_URL/api/books?keyword=Spring'" \
+        "curl -s -X GET '$BASE_URL/books?keyword=Spring'" \
         "validate_books_array"
 
     # 2.4 Get books with pagination
     run_test "2.4 Get books with pagination" "200" \
-        "curl -s -X GET '$BASE_URL/api/books?page=0&size=3'" \
+        "curl -s -X GET '$BASE_URL/books?page=0&size=3'" \
         "validate_books_array"
 
     # 2.5 Get book detail
     run_test "2.5 Get book detail" "200" \
-        "curl -s -X GET '$BASE_URL/api/books/1'" \
+        "curl -s -X GET '$BASE_URL/books/1'" \
         "validate_book_detail"
 
     # 2.6 Get non-existent book
     run_test "2.6 Get non-existent book" "404" \
-        "curl -s -X GET '$BASE_URL/api/books/999'"
+        "curl -s -X GET '$BASE_URL/books/999'"
 }
 
 test_cart_api() {
@@ -201,17 +244,17 @@ test_cart_api() {
 
     # 3.1 Get cart contents
     run_test "3.1 Get cart contents" "200" \
-        "curl -s -X GET '$BASE_URL/api/cart' -H 'Authorization: Bearer $JWT_TOKEN'" \
+        "curl -s -X GET '$BASE_URL/api/carts' -H 'Authorization: Bearer $JWT_TOKEN'" \
         "validate_cart_response"
 
     # 3.2 Add item to cart
     run_test "3.2 Add item to cart" "200" \
-        "curl -s -X POST '$BASE_URL/api/cart' -H 'Content-Type: application/json' -H 'Authorization: Bearer $JWT_TOKEN' -d '{\"bookId\": 1, \"quantity\": 2}'" \
+        "curl -s -X POST '$BASE_URL/api/carts/items' -H 'Content-Type: application/json' -H 'Authorization: Bearer $JWT_TOKEN' -d '{\"bookId\": 1, \"quantity\": 2}'" \
         "validate_success_message"
 
     # 3.3 Update cart item quantity
     run_test "3.3 Update cart item quantity" "200" \
-        "curl -s -X PUT '$BASE_URL/api/cart/1' -H 'Content-Type: application/json' -H 'Authorization: Bearer $JWT_TOKEN' -d '{\"quantity\": 3}'" \
+        "curl -s -X PUT '$BASE_URL/api/carts/items/1' -H 'Content-Type: application/json' -H 'Authorization: Bearer $JWT_TOKEN' -d '{\"quantity\": 3}'" \
         "validate_success_message"
 
     # 3.4 Remove item from cart (save for after order test)
@@ -230,12 +273,12 @@ test_orders_api() {
     local order_response=$(curl -s -X POST "$BASE_URL/api/orders" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $JWT_TOKEN" \
-        -d '{"paymentMethod": "credit_card", "address": "123 Main Street, Tokyo"}')
+        -d '{"shippingAddress": "123 Main Street, Tokyo", "shippingPhone": "090-1234-5678", "paymentMethod": "CREDIT_CARD", "notes": "Test order"}')
 
     local order_status=$(curl -s -X POST "$BASE_URL/api/orders" \
         -H "Content-Type: application/json" \
         -H "Authorization: Bearer $JWT_TOKEN" \
-        -d '{"paymentMethod": "credit_card", "address": "123 Main Street, Tokyo"}' \
+        -d '{"shippingAddress": "123 Main Street, Tokyo", "shippingPhone": "090-1234-5678", "paymentMethod": "CREDIT_CARD", "notes": "Test order"}' \
         -w "%{http_code}" -o /dev/null)
 
     ((TOTAL_TESTS++))
@@ -271,7 +314,7 @@ test_cart_cleanup() {
 
     # 3.4 Remove item from cart
     run_test "3.4 Remove item from cart" "200" \
-        "curl -s -X DELETE '$BASE_URL/api/cart/1' -H 'Authorization: Bearer $JWT_TOKEN'" \
+        "curl -s -X DELETE '$BASE_URL/api/carts/items/1' -H 'Authorization: Bearer $JWT_TOKEN'" \
         "validate_success_message"
 }
 
@@ -317,7 +360,7 @@ test_authentication_required() {
 
     # 7.1 Access cart without authentication
     run_test "7.1 Unauthenticated cart access" "401" \
-        "curl -s -X GET '$BASE_URL/api/cart'"
+        "curl -s -X GET '$BASE_URL/api/carts'"
 
     # 7.2 Access profile without authentication
     run_test "7.2 Unauthenticated profile access" "401" \

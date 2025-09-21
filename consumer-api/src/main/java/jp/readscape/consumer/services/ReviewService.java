@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -40,13 +41,13 @@ public class ReviewService {
     public BookReviewsResponse getBookReviews(Long bookId, Integer page, Integer size, String sortBy) {
         log.debug("Getting reviews for book: {}, page: {}, size: {}, sortBy: {}", bookId, page, size, sortBy);
 
-        // 書籍の存在確認
+        // 書籍の存在確認（早期エラーチェック）
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("書籍が見つかりません: " + bookId));
 
         // ページング設定
         Pageable pageable = PageRequest.of(page, size);
-        
+
         // ソート条件に応じてレビューを取得
         Page<Review> reviewPage = getReviewsBySortType(bookId, sortBy, pageable);
 
@@ -61,16 +62,33 @@ public class ReviewService {
         Integer totalReviews = 0;
         BookReviewsResponse.RatingDistribution distribution = BookReviewsResponse.RatingDistribution.builder().build();
 
-        if (statistics != null && statistics[0] != null) {
-            averageRating = BigDecimal.valueOf((Double) statistics[0]).setScale(1, RoundingMode.HALF_UP);
-            totalReviews = ((Number) statistics[1]).intValue();
-            distribution = BookReviewsResponse.RatingDistribution.builder()
-                    .rating5Count(((Number) statistics[2]).intValue())
-                    .rating4Count(((Number) statistics[3]).intValue())
-                    .rating3Count(((Number) statistics[4]).intValue())
-                    .rating2Count(((Number) statistics[5]).intValue())
-                    .rating1Count(((Number) statistics[6]).intValue())
-                    .build();
+        if (statistics != null && statistics.length > 0 && statistics[0] != null) {
+            try {
+                // 平均評価の安全なキャスト
+                Object avgRatingObj = statistics[0];
+                if (avgRatingObj instanceof Number) {
+                    averageRating = BigDecimal.valueOf(((Number) avgRatingObj).doubleValue()).setScale(1, RoundingMode.HALF_UP);
+                }
+
+                // 総レビュー数の安全なキャスト
+                if (statistics.length > 1 && statistics[1] instanceof Number) {
+                    totalReviews = ((Number) statistics[1]).intValue();
+                }
+
+                // 評価分布の安全なキャスト
+                if (statistics.length > 6) {
+                    distribution = BookReviewsResponse.RatingDistribution.builder()
+                            .rating5Count(statistics[2] instanceof Number ? ((Number) statistics[2]).intValue() : 0)
+                            .rating4Count(statistics[3] instanceof Number ? ((Number) statistics[3]).intValue() : 0)
+                            .rating3Count(statistics[4] instanceof Number ? ((Number) statistics[4]).intValue() : 0)
+                            .rating2Count(statistics[5] instanceof Number ? ((Number) statistics[5]).intValue() : 0)
+                            .rating1Count(statistics[6] instanceof Number ? ((Number) statistics[6]).intValue() : 0)
+                            .build();
+                }
+            } catch (ClassCastException e) {
+                log.warn("Failed to cast rating statistics for book {}: {}", bookId, e.getMessage());
+                // デフォルト値を使用
+            }
         }
 
         return BookReviewsResponse.builder()
@@ -90,7 +108,7 @@ public class ReviewService {
     /**
      * レビューを投稿
      */
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
     public ReviewResponse postReview(Long bookId, Long userId, PostReviewRequest request) {
         log.debug("Posting review for book: {} by user: {}", bookId, userId);
 

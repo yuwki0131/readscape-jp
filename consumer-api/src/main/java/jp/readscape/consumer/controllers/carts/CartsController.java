@@ -73,9 +73,13 @@ public class CartsController {
             Authentication auth
     ) {
         String username = auth.getName();
-        cartService.removeFromCart(username, bookId);
-        
-        return ResponseEntity.ok(ApiResponse.success("商品をカートから削除しました"));
+
+        try {
+            cartService.removeFromCart(username, bookId);
+            return ResponseEntity.ok(ApiResponse.success("商品をカートから削除しました"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @DeleteMapping
